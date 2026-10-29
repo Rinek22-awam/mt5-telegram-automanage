@@ -69,6 +69,11 @@ python build_desktop.py
 ```
 
 Untuk menyertakan tes Qt opsional, tambahkan `.desktop-deps` ke `PYTHONPATH`.
+
+Build dibuat ramping (±100 MB): Pillow, `PySide6.QtNetwork`, `opengl32sw.dll` (grafis cadangan untuk PC
+tanpa driver GPU), dan terjemahan bawaan Qt tidak ikut. `_internal` di folder utama diganti utuh setiap build.
+Setelah build, `dist/`, `build/`, `*.spec`, dan `.desktop-deps/` boleh dihapus; aplikasi tidak membutuhkannya.
+`.desktop-deps/` hanya perlu dipasang lagi (perintah pertama di atas) untuk build ulang atau tes Qt.
 Tes memakai MT5/Telegram tiruan. `python desktop_entry.py --demo --smoke --screenshot preview.png`
 membuka pratinjau data contoh, mengambil gambar, dan keluar tanpa memuat kredensial atau bot.
 `TradingManager.exe --role self-check` memeriksa ketersediaan dependensi, tanpa koneksi trading.

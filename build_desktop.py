@@ -29,8 +29,15 @@ if __name__=='__main__':
         '--add-data',str(ROOT/'tests')+';tests',
         '--exclude-module','PyQt5','--exclude-module','PyQt6',
         '--exclude-module','matplotlib','--exclude-module','pandas','--exclude-module','IPython',
+        # Unused here: Pillow is only an optional Telethon extra; the GUI has no network code.
+        '--exclude-module','PIL','--exclude-module','PySide6.QtNetwork',
     ])
     bundle=ROOT/'dist'/'TradingManager'
-    shutil.copytree(bundle/'_internal',ROOT/'_internal',dirs_exist_ok=True)
+    # Software OpenGL fallback (PCs without a GPU driver) and Qt's own UI translations.
+    (bundle/'_internal'/'PySide6'/'opengl32sw.dll').unlink(missing_ok=True)
+    shutil.rmtree(bundle/'_internal'/'PySide6'/'translations',ignore_errors=True)
+    # Replace, not merge: files dropped from the build must not linger in the old copy.
+    shutil.rmtree(ROOT/'_internal',ignore_errors=True)
+    shutil.copytree(bundle/'_internal',ROOT/'_internal')
     shutil.copy2(bundle/'TradingManager.exe',ROOT/'TradingManager.exe')
     print('Built:',ROOT/'TradingManager.exe')
