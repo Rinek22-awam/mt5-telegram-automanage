@@ -19,9 +19,10 @@ class FakeMT5:
     ORDER_STATE_CANCELED, ORDER_STATE_FILLED, ORDER_STATE_REJECTED, ORDER_STATE_EXPIRED = 2, 4, 5, 6
     TIMEFRAME_M1 = 1
 
-    def __init__(self, bid=4000.0, spread=0.2, balance=10_000.0, demo=True, hedging=True):
+    def __init__(self, bid=4000.0, spread=0.2, balance=10_000.0, demo=True, hedging=True,
+                 currency="USD"):
         self.bid, self.ask, self.time = bid, bid + spread, 1_000_000
-        self.balance = balance
+        self.balance, self.currency = balance, currency
         self.trade_mode = self.ACCOUNT_TRADE_MODE_DEMO if demo else self.ACCOUNT_TRADE_MODE_REAL
         self.margin_mode = (self.ACCOUNT_MARGIN_MODE_RETAIL_HEDGING if hedging
                             else self.ACCOUNT_MARGIN_MODE_RETAIL_NETTING)
@@ -43,7 +44,7 @@ class FakeMT5:
 
     def account_info(self):
         floating = sum(p.profit for p in self.positions.values())
-        return NS(login=123, balance=self.balance, equity=self.balance + floating, currency="USD",
+        return NS(login=123, balance=self.balance, equity=self.balance + floating, currency=self.currency,
                   trade_mode=self.trade_mode, margin_mode=self.margin_mode)
 
     def symbol_select(self, name, enable=True):

@@ -11,8 +11,17 @@
     Sumber: outlook_gold
 
 Optional lines: Order (LIMIT/STOP/MARKET), Entry2, SL2, Risk ("0.5%" or "$20"),
-Catatan. Keys are case-insensitive; ":" or "=" both work. Numbers may use
-Indonesian style ("3.987,26") or plain ("3987.26").
+Highrisk (ya/tidak), Catatan.
+
+Updates from a source use their own header:
+
+    UPDATE
+    Sumber: outlook_gold
+    Aksi: CANCEL          # INFO | CANCEL | CLOSE
+    Teks: cancel order gold
+
+Keys are case-insensitive; ":" or "=" both work. Numbers may use Indonesian style
+("3.987,26") or plain ("3987.26").
 """
 import re
 from typing import List, Optional, Tuple
@@ -20,6 +29,9 @@ from typing import List, Optional, Tuple
 from .models import Setup
 
 _HEADER = re.compile(r"\bSETUP\b", re.I)
+_UPDATE_HEADER = re.compile(r"\bUPDATE\b", re.I)
+_YES = ("YA", "YES", "Y", "TRUE", "1")
+UPDATE_ACTIONS = ("INFO", "CANCEL", "CLOSE")
 _LINE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9 ]*?)\s*[:=]\s*(.+?)\s*$")
 _TP_KEY = re.compile(r"^TP\s*(\d+)$")
 _SIDES = {"BUY": "BUY", "LONG": "BUY", "BELI": "BUY",
@@ -34,6 +46,7 @@ _KEYS = {"PAIR": "pair", "SIMBOL": "pair", "SYMBOL": "pair",
          "TP": "tp", "ORDER": "order", "TIPE": "order",
          "RISK": "risk", "RISIKO": "risk",
          "SUMBER": "source", "SOURCE": "source",
+         "HIGHRISK": "highrisk", "HIGH RISK": "highrisk",
          "CATATAN": "note", "NOTE": "note"}
 
 
@@ -161,4 +174,20 @@ def parse_setup(text: str) -> Tuple[Optional[Setup], List[str]]:
                  tps=tp_list, order_type=order, entry2=entry2, sl2=sl2,
                  risk_mode=risk_mode, risk_value=risk_value,
                  source=vals.get("source", "").strip(), note=vals.get("note", "").strip(),
-                 raw=text), []
+                 highrisk=vals.get("highrisk", "").strip().upper() in _YES, raw=text), []
+
+
+def parse_update(text: str) -> Optional[dict]:
+    """UPDATE post -> {"action", "source", "text"}; None if the post is not an update."""
+    lines = [l for l in (text or "").splitlines() if l.strip()]
+    if not lines or not _UPDATE_HEADER.search(lines[0]) or _HEADER.search(lines[0]):
+        return None
+    vals = {}
+    for line in lines[1:]:
+        m = _LINE.match(line)
+        if m:
+            vals[m.group(1).strip().upper()] = m.group(2)
+    action = vals.get("AKSI", vals.get("ACTION", "INFO")).strip().upper()
+    return {"action": action if action in UPDATE_ACTIONS else "INFO",
+            "source": vals.get("SUMBER", vals.get("SOURCE", "")).strip(),
+            "text": vals.get("TEKS", vals.get("TEXT", "")).strip()}

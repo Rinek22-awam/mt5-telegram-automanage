@@ -65,10 +65,12 @@ class Guard:
         if st.state == "open" and leg["status"] == LEG_PENDING:
             self.journal.update_leg(leg["id"], status=LEG_OPEN, fill_price=st.price, fill_time=st.time)
             self.journal.event(sid, "filled", f"kaki {leg['idx'] + 1} di {st.price}")
+        elif st.state == "open" and not leg["fill_price"]:   # market legs: record the real fill
+            self.journal.update_leg(leg["id"], fill_price=st.price, fill_time=st.time)
         elif st.state == "closed":
             status = {"tp": LEG_TP, "sl": LEG_SL}.get(st.reason, LEG_CLOSED)
             self.journal.update_leg(leg["id"], status=status, profit=st.profit,
-                                    fill_price=leg["fill_price"] or st.price)
+                                    fill_price=leg["fill_price"] or st.open_price or None)
             self.journal.event(sid, status, f"kaki {leg['idx'] + 1} di {st.price}, {st.profit:+.2f}")
             label = {LEG_TP: f"🎯 TP{leg['idx'] + 1} kena", LEG_SL: "🛑 Kena SL"}.get(status, "Ditutup")
             self.notify(f"{label}: #{sid} {s['broker_symbol']} kaki {leg['idx'] + 1}, {st.profit:+.2f}")
@@ -157,7 +159,8 @@ class Guard:
             status = EXPIRED if s["expires"] and self.clock() >= s["expires"] else CANCELLED
             self.journal.update(sid, status=status, pnl=0)
             return
-        self.journal.update(sid, status=DONE, pnl=pnl)
+        by_legs = max((l["idx"] + 1 for l in legs if l["status"] == LEG_TP), default=0)
+        self.journal.update(sid, status=DONE, pnl=pnl, tp_level=max(by_legs, s["tp_level"] or 0))
         self.journal.event(sid, "done", f"{pnl:+.2f}")
         self.notify(f"🏁 #{sid} {s['broker_symbol']} {s['side']} selesai: {pnl:+.2f}")
 
@@ -172,6 +175,14 @@ class Guard:
                 if l["status"] == LEG_PENDING and self.broker.cancel(l["ticket"])[0]:
                     n += 1
             self.journal.event(s["id"], "cancel_request", "")
+        return n
+
+    def close_setup(self, setup_id: int) -> int:
+        """Cancel the unfilled orders and close the open positions of one setup."""
+        n = self.cancel_pending(setup_id)
+        for l in self.journal.legs(setup_id):
+            if l["status"] == LEG_OPEN and self.broker.close(l["ticket"])[0]:
+                n += 1
         return n
 
     def close_all(self) -> int:

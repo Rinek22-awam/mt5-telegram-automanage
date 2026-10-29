@@ -42,6 +42,8 @@ class Gate:
             return _done(v)
         if not recheck:
             self._journal(s, sym, skip_id, v)
+            if s.highrisk:
+                v.warnings.append("HIGHRISK menurut channel (risiko tetap normal)")
             if posted is not None:
                 age = (self.clock() - posted) / 60
                 if age > self.g["umur_maks_setup_menit"]:
@@ -72,8 +74,9 @@ class Gate:
         loss = -(realized + floating)
         if loss <= 0:
             return ""
-        if p.get("loss_harian_dolar") and loss >= float(p["loss_harian_dolar"]):
-            return f"Batas loss harian tercapai ({loss:.2f})"
+        if p.get("loss_harian_dolar") and \
+                loss >= float(p["loss_harian_dolar"]) * self.broker.money_factor():
+            return f"Batas loss harian tercapai ({loss:.2f} {self.broker.account().currency})"
         if p.get("loss_harian_persen") and start > 0 and loss / start * 100 >= p["loss_harian_persen"]:
             return f"Batas loss harian tercapai ({loss / start * 100:.1f}%)"
         return ""

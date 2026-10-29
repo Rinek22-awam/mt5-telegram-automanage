@@ -28,6 +28,8 @@ class Executor:
         entry = s.entry if market.kind != "MARKET" else (
             market.ask if s.side == "BUY" else market.bid)
         balance = self.broker.account().balance
+        if mode == "dolar":   # config and setups speak US dollars; cent accounts count in USC
+            value = float(value) * self.broker.money_factor()
         risk = risk_amount(balance, mode, value, value)
         per_lot = self.broker.loss_per_lot(sym, s.side, entry, s.sl)
         spec = self.broker.spec(sym)

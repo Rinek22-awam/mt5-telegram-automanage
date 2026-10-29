@@ -17,6 +17,7 @@ class Setup:
     risk_value: Optional[float] = None
     source: str = ""
     note: str = ""
+    highrisk: bool = False         # the source called it high risk; flagged, not resized
     raw: str = ""
 
     def key(self) -> str:

@@ -95,7 +95,7 @@ def test_full_lifecycle_limit_be_trailing():
     app, mt5, bot, _ = make()
     post(app)
     assert "perlu konfirmasi" in bot.last and bot.sent[-1]["buttons"]
-    assert "TP1 4000.0 (0.05 lot)" in bot.last and "Risiko 100.00 (1.0% saldo)" in bot.last
+    assert "TP1 4000.0 (0.05 lot)" in bot.last and "Risiko 100.00 USD (1.0% saldo)" in bot.last
     assert not mt5.orders                       # nothing placed before "Ya"
 
     press(app, "ya:1")
@@ -122,7 +122,7 @@ def test_full_lifecycle_limit_be_trailing():
 def test_fixed_dollar_risk_mode_and_small_lot_drops_far_tps():
     app, mt5, bot, _ = make({"risiko": {"mode": "dolar", "dolar": 20}})
     post(app)
-    assert "Risiko 20.00 (tetap 20)" in bot.last
+    assert "Risiko 20.00 USD (tetap $20)" in bot.last
     assert "TP3 4020.0 (tidak dipakai" in bot.last
     press(app, "ya:1")
     assert sorted(o.volume_current for o in mt5.orders.values()) == [0.01, 0.01]
@@ -131,7 +131,7 @@ def test_fixed_dollar_risk_mode_and_small_lot_drops_far_tps():
 def test_per_setup_risk_override():
     app, mt5, bot, _ = make()
     post(app, SETUP + "\nRisk: $50")
-    assert "Risiko 50.00 (tetap 50.0, dari setup)" in bot.last
+    assert "Risiko 50.00 USD (tetap $50.0, dari setup)" in bot.last
 
 
 def test_sell_setup():

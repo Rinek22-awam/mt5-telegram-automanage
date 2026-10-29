@@ -7,7 +7,7 @@ from .executor import Executor
 from .gate import Gate
 from .guard import Guard
 from .models import ACTIVE, AWAITING, DECLINED, EXPIRED, REJECTED, Setup
-from .setup_format import parse_setup
+from .setup_format import parse_setup, parse_update
 
 log = logging.getLogger("copier")
 
@@ -110,6 +110,10 @@ class App:
         if chat != self.inbox or self.journal.message_seen(chat, msg["message_id"]):
             return
         text = msg.get("text") or msg.get("caption") or ""
+        upd = parse_update(text)
+        if upd:
+            self.on_source_update(upd)
+            return
         setup, errors = parse_setup(text)
         if setup is None:
             if errors:
@@ -137,12 +141,38 @@ class App:
         self.journal.update(sid, confirm_deadline=deadline,
                             confirm_msg_id=sent["message_id"] if sent else None)
 
+    def on_source_update(self, upd: dict):
+        """Updates from the signal source never act on their own: INFO is passed on,
+        CANCEL / CLOSE become buttons for the most recent matching setup."""
+        head = f"📣 Update channel{' ' + upd['source'] if upd['source'] else ''}"
+        if upd["action"] == "INFO":
+            self.notify(f"{head}:\n{upd['text']}")
+            return
+        src = upd["source"].lower()
+        rows = [r for r in self.journal.by_status(AWAITING, *ACTIVE)
+                if not src or (r["source"] or "").lower() == src]
+        if not rows:
+            self.notify(f"{head}: {upd['action']}\n{upd['text']}\nTidak ada setup aktif dari sumber ini.")
+            return
+        r = max(rows, key=lambda x: x["id"])
+        sid = r["id"]
+        if r["status"] == AWAITING:
+            act = ("❌ Tolak setup #%d" % sid, f"tidak:{sid}")
+        elif upd["action"] == "CANCEL":
+            act = (f"🚫 Batalkan limit #{sid}", f"batal:{sid}")
+        else:
+            act = (f"🧯 Tutup semua posisi #{sid}", f"tutup:{sid}")
+        self.notify(f"{head}: {upd['action']}\n{upd['text']}\n"
+                    f"Setup terkait: #{sid} {r['broker_symbol'] or r['symbol']} {r['side']} ({r['status']})\n"
+                    f"Bot tidak bertindak sebelum kamu tekan tombol.",
+                    buttons=[[act, ("Abaikan", "abaikan:0")]])
+
     def _summary(self, sid, s: Setup, v, plan) -> str:
         m = v.market
         r = self.cfg["risiko"]
         mode = s.risk_mode or r["mode"]
         value = s.risk_value if s.risk_mode else r[mode]
-        risk_txt = f"{value}% saldo" if mode == "persen" else f"tetap {value}"
+        risk_txt = f"{value}% saldo" if mode == "persen" else f"tetap ${value}"
         if s.risk_mode:
             risk_txt += ", dari setup"
         lines = [f"🆕 Setup #{sid} perlu konfirmasi",
@@ -151,7 +181,8 @@ class App:
         for i, tp in enumerate(s.tps):
             lot = f"{plan.legs[i][0]} lot" if i < len(plan.legs) else "tidak dipakai, lot kurang"
             lines.append(f"TP{i + 1} {tp} ({lot})")
-        lines += [f"Lot total {plan.total_lot} · Risiko {plan.actual_risk:.2f} ({risk_txt})",
+        cur = self.broker.account().currency
+        lines += [f"Lot total {plan.total_lot} · Risiko {plan.actual_risk:.2f} {cur} ({risk_txt})",
                   f"Harga sekarang {m.bid} / {m.ask}"]
         if s.entry2 or s.sl2:
             lines.append(f"Entry2/SL2 dicatat, tidak dipakai: {s.entry2 or '-'} / {s.sl2 or '-'}")
@@ -175,7 +206,7 @@ class App:
             return f"🚫 #{sid} ditolak broker: {err}"
         what = "masuk market" if v.market.kind == "MARKET" else f"{v.market.kind} terpasang"
         return (f"📌 #{sid} {v.market.symbol} {s.side} {what}, lot {plan.total_lot}, "
-                f"risiko {plan.actual_risk:.2f}")
+                f"risiko {plan.actual_risk:.2f} {self.broker.account().currency}")
 
     def _expire_confirmations(self):
         for r in self.journal.by_status(AWAITING):
@@ -226,6 +257,17 @@ class App:
                 n = self.guard.close_all()
                 text = f"🧯 {n} order/posisi ditutup atau dibatalkan."
             self._reply(msg_id, text)
+            return
+        if action == "abaikan":
+            self._reply(msg_id, "Diabaikan. SOP bot tetap berjalan.")
+            return
+        if action in ("batal", "tutup") and arg.isdigit():
+            if action == "batal":
+                n = self.guard.cancel_pending(int(arg))
+                self._reply(msg_id, f"🚫 {n} limit setup #{arg} dibatalkan.")
+            else:
+                n = self.guard.close_setup(int(arg))
+                self._reply(msg_id, f"🧯 Setup #{arg}: {n} order/posisi ditutup atau dibatalkan.")
             return
         if action not in ("ya", "tidak") or not arg.isdigit():
             return

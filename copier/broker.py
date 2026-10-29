@@ -15,6 +15,7 @@ _INVALID_FILL = 10030
 class LegState:
     state: str                       # pending | open | closed | cancelled | unknown
     price: float = 0.0               # fill price (open) or close price (closed)
+    open_price: float = 0.0          # fill price, also known once closed
     sl: float = 0.0
     tp: float = 0.0
     volume: float = 0.0
@@ -48,6 +49,10 @@ class Broker:
 
     def is_demo(self) -> bool:
         return self.account().trade_mode == self.mt5.ACCOUNT_TRADE_MODE_DEMO
+
+    def money_factor(self) -> float:
+        """Account-currency units per US dollar: 100 on cent accounts (USC), else 1."""
+        return 100.0 if (self.account().currency or "").upper() == "USC" else 1.0
 
     def is_hedging(self) -> bool:
         return self.account().margin_mode == self.mt5.ACCOUNT_MARGIN_MODE_RETAIL_HEDGING
@@ -182,7 +187,9 @@ class Broker:
             last = outs[-1]
             reason = {m.DEAL_REASON_TP: "tp", m.DEAL_REASON_SL: "sl"}.get(last.reason, "other")
             profit = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0.0) for d in deals)
-            return LegState("closed", price=last.price, profit=profit, reason=reason)
+            ins = [d.price for d in deals if d.entry == m.DEAL_ENTRY_IN]
+            return LegState("closed", price=last.price, open_price=ins[0] if ins else 0.0,
+                            profit=profit, reason=reason)
         hist = m.history_orders_get(ticket=t) or []
         if hist and hist[0].state in (m.ORDER_STATE_CANCELED, m.ORDER_STATE_EXPIRED,
                                       m.ORDER_STATE_REJECTED):
