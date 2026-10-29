@@ -1,41 +1,55 @@
-from types import SimpleNamespace as NS
-from unittest.mock import MagicMock
-
 from copier.broker import Broker
-from copier.models import Signal
+from copier.config import with_defaults
+
+from .fake_mt5 import FakeMT5
 
 
-def fake_mt5():
-    m = MagicMock()
-    m.symbol_info_tick.return_value = NS(bid=2349.8, ask=2350.0)
-    m.symbol_info.return_value = NS(trade_tick_size=0.01, trade_tick_value=1.0,
-                                    volume_min=0.01, volume_max=50, volume_step=0.01)
-    m.account_info.return_value = NS(balance=10_000)
-    m.TRADE_RETCODE_DONE, m.TRADE_RETCODE_PLACED = 10009, 10008
-    tickets = iter(range(1, 10))
-    m.order_send.side_effect = lambda req: NS(retcode=10009, order=next(tickets), price=req.get("price"), comment="")
-    return m
+def mk(**kw):
+    m = FakeMT5(**kw)
+    return m, Broker(with_defaults({}), mt5_module=m)
 
 
-CFG = {"risk": {"percent_per_trade": 1.0}, "execution": {"tp_split": [0.5, 0.5], "breakeven_after_tp": 1}}
+def test_loss_per_lot_uses_order_calc_profit():
+    _, b = mk()
+    # gold: $10 move on 1 lot (100 oz) = $1000
+    assert round(b.loss_per_lot("XAUUSDm", "BUY", 3990, 3980), 2) == 1000.0
 
 
-def test_place_splits_legs_and_breakeven():
-    m, log = fake_mt5(), MagicMock()
-    b = Broker(CFG, log, mt5_module=m, dry_run=False)
-    t = b.place(Signal("BUY", "GOLD", None, 2340.0, [2355.0, 2360.0]), "XAUUSD")
-    assert t == [1, 2]
-    vols = [c.args[0]["volume"] for c in m.order_send.call_args_list]
-    assert abs(sum(vols) - 0.10) < 1e-9          # $100 risk / ($10 * 100 ticks)
-    m.positions_get.return_value = [NS(ticket=2, tp=2360.0)]  # TP1 leg closed
-    b.manage()
-    last = m.order_send.call_args.args[0]
-    assert last["position"] == 2 and last["sl"] == 2350.0
+def test_falls_back_to_next_filling_mode():
+    m, b = mk()
+    m.accepted_fillings = {m.ORDER_FILLING_RETURN}
+    ticket, err = b.place("XAUUSDm", "BUY", "LIMIT", 0.05, 3990, 3980, 4010, "su1-1")
+    assert ticket and err == ""
+    assert [r["type_filling"] for r in m.requests] == [m.ORDER_FILLING_FOK, m.ORDER_FILLING_RETURN]
 
 
-def test_dry_run_sends_nothing():
-    m, log = fake_mt5(), MagicMock()
-    b = Broker(CFG, log, mt5_module=m, dry_run=True)
-    b.place(Signal("BUY", "GOLD", None, 2340.0, [2355.0]), "XAUUSD")
-    m.order_send.assert_not_called()
-    assert log.write.call_args.kwargs["event"] == "dry_open"
+def test_leg_lifecycle():
+    m, b = mk()
+    t, _ = b.place("XAUUSDm", "BUY", "LIMIT", 0.05, 3990, 3980, 4010, "x")
+    assert b.leg_state(t).state == "pending"
+    m.set_price(3989.8)
+    st = b.leg_state(t)
+    assert st.state == "open" and st.price == 3990
+    m.set_price(4010.5)
+    st = b.leg_state(t)
+    assert (st.state, st.reason, st.profit) == ("closed", "tp", 100.0)
+
+
+def test_cancelled_leg():
+    m, b = mk()
+    t, _ = b.place("XAUUSDm", "SELL", "LIMIT", 0.05, 4010, 4020, 3990, "x")
+    assert b.cancel(t)[0]
+    assert b.leg_state(t).state == "cancelled"
+
+
+def test_normalize_to_tick():
+    _, b = mk()
+    assert b.normalize("XAUUSDm", 3990.12345) == 3990.123
+
+
+def test_day_pnl():
+    m, b = mk()
+    b.place("XAUUSDm", "BUY", "MARKET", 0.1, 0, 3990, 4010, "x")
+    m.set_price(3995.0)
+    realized, floating, start = b.day_pnl("XAUUSDm")
+    assert realized == 0 and round(floating, 2) == -52.0 and start == 10_000

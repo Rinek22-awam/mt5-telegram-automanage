@@ -1,25 +1,62 @@
-channels:            # usernames or numeric ids
-  - my_signal_channel
-dry_run: true
-risk:
-  percent_per_trade: 1.0     # % of balance risked across all TP legs
-  max_lot: 5.0
-  min_lot_override: null
-symbols:                     # signal name -> broker symbol
-  GOLD: XAUUSD
-  XAUUSD: XAUUSD
-  EURUSD: EURUSD
-validation:
-  max_entry_deviation_pct: 0.5   # reject if entry is this far from current price
-  max_signal_age_sec: 120
-  duplicate_window_sec: 600
-  require_sl: true
-execution:
-  magic: 260101
-  deviation_points: 20
-  use_market_orders: true      # false = place pending at entry
-  tp_split: [0.5, 0.3, 0.2]    # volume share per TP; remainder goes on last TP
-  breakeven_after_tp: 1        # move SL to entry after TP1 hit
-  monitor_interval_sec: 5
-log:
-  dir: logs
+# Pengaturan bot. Ubah angka di sini lalu restart bot; kode tidak perlu disentuh.
+# Rahasia (token bot Telegram, ID, login MT5) TIDAK di sini, tapi di file .env.
+
+akun:
+  hanya_demo: true            # bot menolak jalan kalau MT5 login ke akun real
+
+risiko:
+  mode: persen                # persen = % dari saldo | dolar = nominal tetap per setup
+  persen: 1.0                 # dipakai kalau mode: persen
+  dolar: 10                   # dipakai kalau mode: dolar (dalam mata uang akun)
+  lot_maks: 5.0               # batas atas total lot satu setup
+  # Risiko dihitung TOTAL untuk semua kaki TP: kalau semua kena SL, rugi = angka di atas.
+  # Satu setup bisa menimpa ini dengan baris "Risk: 0.5%" atau "Risk: $20".
+
+tp:
+  # Pembagian lot (%) per TP, menurut jumlah TP di setup.
+  # Kalau lot terlalu kecil untuk dibagi, TP paling jauh dibuang.
+  bagi:
+    1: [100]
+    2: [50, 50]
+    3: [50, 30, 20]
+    4: [40, 30, 20, 10]
+    5: [30, 25, 20, 15, 10]
+
+sop:
+  be_setelah_tp: 1            # SL digeser ke BE setelah TP ke-berapa kena (0 = mati)
+  be_jarak_aman_r: 0.1        # BE dikunci sedikit di atas entry: 0.1 = 10% dari jarak entry-SL
+  trailing: true              # bertingkat: TP2 kena -> SL ke TP1, TP3 kena -> SL ke TP2, dst.
+  tutup_jika_sl_baru_terlewat: true   # harga balik melewati SL baru sebelum sempat digeser -> tutup
+
+entry:
+  limit_kedaluwarsa_jam: 12   # limit yang belum ke-fill dibatalkan setelah ini
+  jika_harga_sudah_lewat: market   # LIMIT tapi harga sudah lebih bagus dari entry: market | tolak
+
+gerbang:
+  umur_maks_setup_menit: 30           # postingan lebih tua dari ini ditolak (basi)
+  jarak_maks_dari_harga_persen: 1.0   # entry lebih jauh dari ini (dari harga sekarang) ditolak
+  konfirmasi_wajib: true              # tanya Ya/Tidak di Telegram sebelum eksekusi
+  konfirmasi_kedaluwarsa_menit: 30    # tidak dijawab -> batal
+  dobel_jendela_jam: 24               # setup sama persis dalam jendela ini ditolak sebagai dobel
+  mirip_jarak_entry_persen: 0.15      # pair & arah sama, entry sedekat ini -> diberi tanda "mirip"
+
+pengaman:
+  maks_setup_aktif: 3         # setup yang sedang jalan/menunggu fill
+  loss_harian_persen: 3.0     # stop terima setup baru kalau loss hari ini sampai segini
+  loss_harian_dolar: null     # isi angka kalau mau batas nominal juga (yang kena duluan berlaku)
+
+simbol:                       # nama di setup -> nama di MT5 Exness (cek di Market Watch)
+  XAUUSD: XAUUSDm
+  GOLD: XAUUSDm
+  EURUSD: EURUSDm
+  GBPUSD: GBPUSDm
+  USDJPY: USDJPYm
+  BTCUSD: BTCUSDm
+
+mt5:
+  magic: 260101               # penanda order milik bot
+  deviasi_poin: 20            # toleransi slippage order market
+
+bot:
+  interval_detik: 2           # seberapa sering posisi dicek
+  jurnal: data/jurnal.db

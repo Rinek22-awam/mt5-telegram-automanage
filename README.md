@@ -1,80 +1,137 @@
-# MT5 Telegram Signal Copier
+# MT5 Telegram Automanage
 
-Listens to Telegram channels you choose, parses trade signals, validates them against live prices and copies them to MetaTrader 5 with risk-based position sizing.
+Bot yang membaca **setup berformat standar** dari satu channel Telegram privat (kotak masuk), minta konfirmasi kamu lewat tombol Telegram, lalu mengeksekusinya ke **MetaTrader 5** dan menjaga posisinya sesuai SOP: limit entry, TP bertahap, SL ke BE, trailing bertingkat, dan batas waktu limit. Bot **tidak menganalisa**.
 
-## Features
-- **Telethon listener** for any number of channels/groups (user account session).
-- **Tolerant parser**: BUY/SELL/LONG/SHORT, symbol aliases (GOLD, XAUUSD, US30...), entry or entry range, SL, multiple TPs, emojis, comma decimals, multi-line or single-line formats.
-- **Validation**: symbol mapping to broker names, signal age, entry deviation vs current tick, TP1 already passed, SL on wrong side, duplicate detection window.
-- **Risk sizing**: lots computed from balance x risk % and SL distance using tick size/value; respects broker min/max/step.
-- **Partial TPs**: volume split across TP legs (`tp_split`), remaining legs moved to **breakeven** after TP1 (configurable).
-- **Trade log** in `logs/trades.csv` and `logs/trades.jsonl`.
-- **Dry-run mode** (default) logs what would be traded without sending orders.
-- Unit tests (pytest) for parser, validator, sizing and broker logic with a mocked MT5 module.
+Dikembangkan dari [MT5-Automation-Labs/mt5-telegram-signal-copier](https://github.com/MT5-Automation-Labs/mt5-telegram-signal-copier) (MIT). Yang dipakai ulang: perhitungan lot dan ide cek validasi. Pembaca Telegram, gerbang, eksekutor, dan penjaga posisi ditulis ulang.
 
-## Requirements
-- Windows with MetaTrader 5 terminal installed and logged in (the `MetaTrader5` Python package is Windows-only).
-- Python 3.10+
-- Telegram API ID / hash from https://my.telegram.org
-
-## Install
-```bash
-git clone https://github.com/MT5-Automation-Labs/mt5-telegram-signal-copier.git
-cd mt5-telegram-signal-copier
-pip install -r requirements.txt
-copy .env.example .env      # then fill in your values
 ```
-Edit `config.yaml`, then run:
-```bash
-python -m copier.main            # uses dry_run from config.yaml
-python -m copier.main --dry-run  # force dry-run
+📥 Channel privat ──► Gerbang ──► Konfirmasi (tombol) ──► Eksekutor ──► MT5
+   (format standar)    │  cek dasar, dobel/mirip,                          │
+                       │  batas loss & setup aktif                         ▼
+                       └──────────────► Jurnal ◄──────────── Penjaga posisi (BE, trailing)
 ```
-The first start asks for your Telegram phone number and login code; the session file is stored locally (ignored by git).
 
-## Configuration
-**.env**: `TG_API_ID`, `TG_API_HASH`, `TG_SESSION`, optional `MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER`, `MT5_PATH` (leave empty to use the running terminal).
+## Format setup
 
-**config.yaml**
-| Key | Meaning |
+Tulis di channel kotak masuk. Baris pertama harus berisi kata `SETUP`.
+
+```
+SETUP
+Pair: XAUUSD
+Arah: BUY
+Entry: 3987.26
+SL: 3981.26
+TP1: 3993.26
+TP2: 3999.26
+TP3: 4005.26
+Sumber: outlook_gold
+```
+
+| Baris | Wajib | Isi |
+|---|---|---|
+| `Pair` | ya | Nama pair seperti di sinyal. Diterjemahkan ke nama MT5 lewat `simbol:` di `config.yaml` |
+| `Arah` | ya | `BUY` / `SELL` (boleh juga `LONG`/`SHORT`/`BELI`/`JUAL`) |
+| `Entry` | ya, kecuali MARKET | Harga entry |
+| `SL` | ya | Stop loss |
+| `TP1`, `TP2`, ... | minimal satu | Urutan bebas, bot mengurutkan dari yang terdekat |
+| `Order` | tidak | `LIMIT` (default), `STOP`, atau `MARKET` |
+| `Risk` | tidak | Menimpa risiko di config untuk setup ini saja: `0.5%` atau `$20` |
+| `Entry2`, `SL2` | tidak | Dicatat di jurnal, tidak dipakai (SOP: entry pertama, SL1) |
+| `Sumber`, `Catatan` | tidak | Untuk jurnal dan evaluasi channel |
+
+Angka boleh format biasa (`3987.26`) atau Indonesia (`3.987,26`). Postingan tanpa kata `SETUP` di baris pertama diabaikan. Postingan `SETUP` yang salah format dilaporkan ke chat pribadimu, tidak dieksekusi.
+
+## Apa yang dicek gerbang
+
+- Simbol ada di MT5, SL dan TP di sisi yang benar, SL/TP1 belum terlewat harga.
+- Postingan tidak basi (default 30 menit), entry tidak terlalu jauh dari harga (default 1%).
+- **Dobel** (sama persis dalam 24 jam) → ditolak. **Mirip** (pair & arah sama, entry dekat) → tetap ditanyakan dengan tanda ⚠️.
+- Bot tidak sedang di-stop, setup aktif belum penuh (default 3), batas loss harian belum kena (default 3%).
+- Lot hasil hitungan tidak di bawah minimum broker.
+
+Setelah kamu tekan **Ya**, cek harga diulang sekali lagi sebelum order dikirim.
+
+## SOP penjaga posisi
+
+- Lot dibagi per TP sesuai `tp.bagi` (default 3 TP: 50/30/20). Kalau lot terlalu kecil untuk dibagi, TP terjauh dibuang.
+- **TP1 kena** → SL semua kaki sisa digeser ke entry + 10% jarak SL (`be_jarak_aman_r`).
+- **TP2 kena** → SL ke TP1, **TP3 kena** → SL ke TP2, dst. SL tidak pernah dilonggarkan.
+- Geser SL gagal → dicoba ulang tiap 15 detik. Harga sudah melewati SL baru sebelum sempat digeser → kaki ditutup di harga pasar.
+- Limit belum ke-fill setelah 12 jam → dibatalkan.
+- Semua status disimpan di jurnal (`data/jurnal.db`). Setelah restart, bot membaca ulang kondisi MT5 dan melanjutkan, termasuk TP yang kena saat bot mati.
+- SL dan TP selalu terpasang di MT5. Kalau bot mati, posisi tetap terlindungi, tapi BE/trailing berhenti.
+
+## Perintah di chat pribadi dengan bot
+
+| Perintah | Fungsi |
 |---|---|
-| `channels` | Channel usernames or numeric IDs to listen to |
-| `dry_run` | `true` = never send orders |
-| `risk.percent_per_trade` | % of balance lost if SL is hit (all legs combined) |
-| `risk.max_lot` | Upper cap on total lot size |
-| `symbols` | Signal symbol -> broker symbol (e.g. `GOLD: XAUUSD.m`) |
-| `validation.max_entry_deviation_pct` | Reject if price moved further than this from the signal entry |
-| `validation.max_signal_age_sec` | Reject messages older than this |
-| `validation.duplicate_window_sec` | Ignore identical signals within this window |
-| `validation.require_sl` | Reject signals without stop loss |
-| `execution.use_market_orders` | `true` = market now, `false` = pending order at entry |
-| `execution.tp_split` | Volume share per TP leg |
-| `execution.breakeven_after_tp` | Move remaining legs to entry after N legs closed (0 = off) |
-| `execution.magic`, `deviation_points`, `monitor_interval_sec` | Order settings |
+| `/status` | Saldo, setup aktif, TP yang sudah kena |
+| `/stop` | Tolak setup baru + batalkan semua limit. Posisi yang jalan tetap dijaga |
+| `/lanjut` | Terima setup lagi |
+| `/batal 12` | Batalkan limit setup #12 yang belum ke-fill |
+| `/tutupsemua` | Tutup semua posisi dan limit bot (ada tombol konfirmasi) |
 
-## Tests
-```bash
-pip install pytest pyyaml python-dotenv
+## Pengaturan
+
+Semua angka SOP ada di [`config.yaml`](config.yaml), lengkap dengan penjelasan. Ubah lalu restart bot. Yang paling sering diubah:
+
+```yaml
+risiko:
+  mode: persen     # persen = % saldo | dolar = nominal tetap
+  persen: 1.0
+  dolar: 10
+```
+
+Rahasia **tidak** ditulis di `config.yaml`, tapi di `.env` (tidak ikut ke git).
+
+## Pasang dan uji di akun demo
+
+1. **Install** (sekali saja), dari folder ini:
+   ```
+   pip install -r requirements.txt
+   copy .env.example .env
+   ```
+2. **Bot Telegram:** buat bot di @BotFather, tempel tokennya ke `TG_BOT_TOKEN` di `.env`. Jangan kirim token ke siapa pun.
+3. **Channel kotak masuk:** buat channel **privat**, tambahkan bot sebagai **admin**. Kirim `/start` ke bot di chat pribadi.
+4. **Cari ID:** jalankan `python -m copier.main --cari-id`, kirim satu postingan di channel, tekan Enter. Salin dua angka yang muncul ke `TG_INBOX_CHANNEL_ID` dan `TG_ADMIN_USER_ID`.
+5. **MT5:** buka MT5 desktop, login ke akun **demo** Exness (tipe hedging). Di Market Watch, cek nama simbol gold (misal `XAUUSDm`) dan sesuaikan bagian `simbol:` di `config.yaml`. Di MT5: Tools → Options → Expert Advisors → centang **Allow algorithmic trading**.
+6. **Jalankan:** `python -m copier.main`. Bot mengirim "🤖 Bot nyala" ke chat pribadimu. Bot menolak jalan kalau MT5 login ke akun real (`akun.hanya_demo: true`).
+7. **Uji fungsi** (bukan strategi). Pakai entry dekat harga sekarang supaya cepat ke-fill:
+   - Setup BUY limit di bawah harga → muncul konfirmasi → **Ya** → 3 limit order muncul di MT5 (tab Trade).
+   - Setelah ke-fill dan TP1 kena: SL kaki sisa pindah ke BE.
+   - Setup yang sama dikirim lagi → ditolak "Dobel".
+   - Tekan **Tidak** → tidak ada order.
+   - `/stop` → limit hilang. `/lanjut` → normal lagi.
+   - Matikan bot (Ctrl+C) saat ada posisi jalan, nyalakan lagi → posisi tetap dijaga.
+   - Ganti `risiko.mode` ke `dolar`, restart → lot di konfirmasi berubah sesuai nominal.
+
+## Tes logika (tanpa MT5 dan Telegram)
+
+```
 python -m pytest -q
 ```
-Tests do not need MT5 or Telegram.
 
-## Project layout
+Tes memakai MT5 tiruan (`tests/fake_mt5.py`) yang mengisi limit dan menutup SL/TP saat harga digerakkan.
+
+## Isi folder
+
 ```
-copier/parser.py     signal text -> Signal
-copier/validator.py  symbol map, staleness, duplicates
-copier/sizing.py     lot size and TP splitting
-copier/broker.py     MetaTrader5 wrapper, partial TPs, breakeven
-copier/tradelog.py   CSV / JSONL log
-copier/main.py       Telegram listener and entry point
+copier/setup_format.py  teks postingan -> Setup (format standar)
+copier/gate.py          cek dasar, dobel/mirip di jurnal, pengaman
+copier/executor.py      hitung lot (2 mode risiko), pasang order per TP
+copier/guard.py         penjaga posisi: fill, BE, trailing, kedaluwarsa, retry
+copier/journal.py       jurnal SQLite
+copier/broker.py        pembungkus MetaTrader5 (mode pengisian order, status kaki)
+copier/telegram.py      klien Bot API Telegram (tanpa paket tambahan)
+copier/app.py           alur kotak masuk -> konfirmasi -> eksekusi, perintah
+copier/main.py          titik masuk
+config.yaml             semua angka SOP
 ```
 
 ## Disclaimer
 
-Trading forex, metals, indices and CFDs on margin carries a high level of risk and can result in losses greater than your deposit. This software is provided for educational purposes, without any warranty, and is not financial advice. Past or backtested performance does not guarantee future results. Always test on a demo account first and use it at your own risk.
+Trading forex, logam, indeks, dan CFD dengan margin berisiko tinggi dan bisa rugi melebihi deposit. Software ini tanpa garansi dan bukan nasihat keuangan. Selalu uji di akun demo dulu.
 
-## License
-MIT © 2026 StanleyDaniels
+## Lisensi
 
-## Contact
-
-Telegram: [t.me/teraus111](https://t.me/teraus111)
+MIT © 2026 StanleyDaniels (kode asli). Perubahan di fork ini mengikuti lisensi yang sama.
