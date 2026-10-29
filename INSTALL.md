@@ -19,9 +19,11 @@ Grup sinyal (gambar) → PEMBACA (akun Telegram-mu + Claude membaca gambar)
                         BOT (bot Telegram) → gerbang → tombol Ya/Tidak → MT5 (Exness)
 ```
 
-Dua program, dijalankan dari **`MENU.bat`**:
+Dua program, dijalankan dari **`MENU.bat`** (atau dari dashboard Trading Manager, opsional, langkah 8):
 - **Bot** (`copier/`): membaca kotak masuk, minta konfirmasi, memasang order di MT5, menjaga posisi (BE, trailing).
 - **Pembaca** (`reader/`): menonton grup sinyal, gambar dibaca Claude Code (`claude -p`), hasilnya diposting ke kotak masuk.
+
+Setup juga bisa diketik manual di kotak masuk: format dan contohnya di [FORMAT_SETUP.md](FORMAT_SETUP.md).
 
 ---
 
@@ -45,6 +47,7 @@ git checkout tahap-1
 ```
 
 `tahap-1` adalah branch kerja (belum digabung ke `main` sampai uji demo lolos; cek `git branch -a`).
+Mau sekalian dashboard desktop? Pakai `git checkout codex/desktop-manager` (berisi `tahap-1` + dashboard) sampai dashboard digabung ke `tahap-1`.
 
 Atur identitas git **khusus repo ini** (bukan global):
 
@@ -60,7 +63,7 @@ python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
-Semua tes harus lolos. Tes tidak butuh MT5, Telegram, atau Claude: semuanya pakai tiruan.
+Semua tes harus lolos. Tes tidak butuh MT5, Telegram, atau Claude: semuanya pakai tiruan. Di branch dashboard, tes tampilan (Qt) dilewati kalau paket desktop belum dipasang; itu normal.
 
 ## 4. Isi file `.env` (kamu sendiri, bukan Claude)
 
@@ -104,24 +107,42 @@ Klik dua kali **`MENU.bat`**, lalu:
    Sumber asli: grup **`-1002631236672`** ("Trabar AMF"), topik **`78395`**.
 2. **Utilitas → Coba baca gambar sinyal** → seret satu gambar sinyal dari grup sumber ke jendela → harus jadi `SETUP` dengan angka yang sama dengan gambar.
 3. **Utilitas → Cek kesiapan** → semua ✅.
-4. **Jalankan → Bot + Pembaca.** Di Telegram muncul "🤖 Bot nyala".
+4. **Utilitas → Pengaturan SOP.** `config.yaml` dari GitHub berisi angka bawaan yang aman (risiko 1%, loss harian 3%, maks 3 setup). Setel ulang sesuai kebutuhan; setelan di PC lama tidak ikut pindah.
+5. **Jalankan → Bot + Pembaca.** Di Telegram muncul "🤖 Bot nyala".
 
-## 8. Yang TIDAK ada di git (tidak ikut pindah otomatis)
+## 8. (Opsional) Dashboard Trading Manager
+
+Aplikasi desktop untuk memantau dan mengontrol bot (setujui setup, batal/tutup, pengaturan, log). Ada di branch `codex/desktop-manager`; detail di [DESKTOP.md](DESKTOP.md). File `.exe` **tidak ada di git**, jadi dibuat ulang di device baru:
+
+```
+python -m pip install --target .desktop-deps PySide6-Essentials==6.10.0 pyinstaller==6.22.3
+python build_desktop.py
+```
+
+Hasilnya `TradingManager.exe` + folder `_internal/` di folder repo (±100 MB). Setelah itu `dist/`, `build/`, `*.spec`, dan `.desktop-deps/` boleh dihapus.
+
+- **Pilih satu cara menyalakan bot**: dari `MENU.bat` *atau* dari aplikasi. Tombol trading di aplikasi hanya aktif kalau bot dinyalakan dari aplikasi.
+- Bot dari aplikasi jalan tanpa jendela. Tombol X menyembunyikan aplikasi ke ikon dekat jam; "Keluar" tidak mematikan bot. Matikan lewat halaman **Bot & pembaca**.
+
+## 9. Yang TIDAK ada di git (tidak ikut pindah otomatis)
 
 | File | Isi | Di device baru |
 |---|---|---|
 | `.env` | Semua rahasia | Isi ulang (langkah 4) |
-| `pembaca.session` | Login Telegram pembaca = akses penuh ke akunmu | **Login ulang** (langkah 7.1). Jangan disalin lewat chat/cloud. Hapus dari device lama |
+| `pembaca.session` (+ `pembaca.session-journal`) | Login Telegram pembaca = akses penuh ke akunmu | **Login ulang** (langkah 7.1). Jangan disalin lewat chat/cloud. Hapus dari device lama |
+| `config.yaml` versi PC lama | Setelan SOP yang sudah kamu ubah | Yang di git berisi angka bawaan; setel ulang lewat menu (langkah 7.4) |
 | `data/jurnal.db` | Riwayat semua setup | Boleh disalin dari device lama ke `data/` kalau mau riwayat tetap ada. Jangan disalin saat bot di device lama masih jalan |
+| `data/jurnal-cadangan-*.db`, `data/desktop-*` | Cadangan reset jurnal, data dashboard | Tidak perlu |
+| `TradingManager.exe`, `_internal/` | Dashboard | Build ulang (langkah 8) |
 | `logs/` | Log bot dan pembaca | Tidak perlu |
 
 **Jangan jalankan bot di dua device sekaligus.** Keduanya akan membaca kotak masuk yang sama dan bisa mengeksekusi satu sinyal dua kali. Matikan di device lama dulu. (Pengaman anti-dobel hanya bekerja di satu PC.)
 
-## 9. Catatan perencanaan
+## 10. Catatan perencanaan
 
-Dokumen rencana, status terakhir, dan keputusan proyek ada di folder `docs/` repo ini kalau sudah disalin ke sana; kalau belum, dokumen itu hanya ada di PC lama (`F:\Plan sistem trade\`). Status terakhir selalu ada di `STATUS_DAN_LANJUTAN.md`.
+Rencana, status terakhir, dan semua keputusan proyek **tidak ada di repo** (sengaja tidak di-push). Semuanya di folder perencanaan PC lama `F:\Plan sistem trade\`, terutama `STATUS_DAN_LANJUTAN.md`. Salin folder itu sendiri kalau pindah device (tanpa folder `mt5-telegram-automanage\` di dalamnya yang berisi `.env` dan sesi Telegram).
 
-## 10. Masalah yang pernah muncul
+## 11. Masalah umum
 
 | Gejala | Penyebab | Jalan keluar |
 |---|---|---|
@@ -131,3 +152,6 @@ Dokumen rencana, status terakhir, dan keputusan proyek ada di folder `docs/` rep
 | "Bot sudah jalan di jendela lain" | Bot sudah menyala | Pakai jendela yang ada, atau tutup dulu |
 | Setup ditolak "Simbol ... tidak ada di MT5" | Nama simbol beda (akhiran `m`/`c`, ganti broker) | Utilitas → Cocokkan nama pair dengan broker |
 | Gambar contoh lama ditolak "Entry terlalu jauh" / "TP1 sudah terlewat" (market) | Harga di gambar sudah basi | Normal; gerbang bekerja |
+| Setup manual ditolak "Entry terlalu jauh", padahal angkanya benar | Ditulis pakai titik ribuan (`112.500` dibaca 112,5) | Tulis tanpa pemisah ribuan: `112500`. Lihat [FORMAT_SETUP.md](FORMAT_SETUP.md) |
+| Tombol trading di dashboard abu-abu | Bot dinyalakan dari `MENU.bat`, atau data bot basi | Matikan bot menu lama, nyalakan dari aplikasi (halaman Bot & pembaca) |
+| Antivirus menahan `TradingManager.exe` | Salah deteksi umum untuk .exe buatan sendiri dari Python | Izinkan file itu di antivirus, atau build ulang |

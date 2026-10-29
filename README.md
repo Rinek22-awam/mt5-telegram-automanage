@@ -11,7 +11,7 @@ Dikembangkan dari [MT5-Automation-Labs/mt5-telegram-signal-copier](https://githu
                        └──────────────► Jurnal ◄──────────── Penjaga posisi (BE, trailing)
 ```
 
-> **Pasang di PC baru:** ikuti [INSTALL.md](INSTALL.md).
+> **Pasang di PC baru:** ikuti [INSTALL.md](INSTALL.md). **Format setup** siap salin: [FORMAT_SETUP.md](FORMAT_SETUP.md). **Dashboard desktop** (opsional, branch `codex/desktop-manager`): [DESKTOP.md](DESKTOP.md).
 
 ## MENU.bat: satu pintu untuk semuanya
 
@@ -183,7 +183,7 @@ Bot mengenali akun cent Exness (mata uang **USC**). Nilai dolar di `config.yaml`
 python -m pytest -q
 ```
 
-Tes memakai MT5 tiruan (`tests/fake_mt5.py`) yang mengisi limit dan menutup SL/TP saat harga digerakkan.
+Tes memakai MT5 tiruan (`tests/fake_mt5.py`) yang mengisi limit dan menutup SL/TP saat harga digerakkan. Tes tampilan dashboard butuh Qt (`.desktop-deps`, lihat [DESKTOP.md](DESKTOP.md)); tanpa itu tesnya dilewati.
 
 ## Isi folder
 
@@ -203,7 +203,11 @@ reader/vision.py        panggilan Claude Code (claude -p) yang dikunci
 reader/updates.py       pesan teks channel -> UPDATE
 reader/main.py          pembaca: akun Telegram-mu menonton channel sinyal
 panel/                  MENU.bat: menu, pengaturan SOP, cek kesiapan
+desktop/                dashboard Trading Manager (PySide6), lihat DESKTOP.md
+desktop_entry.py        titik masuk dashboard
+build_desktop.py        pembuat TradingManager.exe
 config.yaml             semua angka SOP
+FORMAT_SETUP.md         format SETUP/UPDATE kosong + contoh
 ```
 
 ## Disclaimer
