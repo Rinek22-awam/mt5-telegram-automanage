@@ -92,7 +92,10 @@ Setelah kamu tekan **Ya**, cek harga diulang sekali lagi sebelum order dikirim.
 
 ## SOP penjaga posisi
 
-- Lot dibagi per TP sesuai `tp.bagi` (default 3 TP: 50/30/20). Kalau lot terlalu kecil untuk dibagi, TP terjauh dibuang.
+- **Mode TP** (`tp.mode`, diatur di MENU → Pengaturan SOP → Pembagian lot per TP):
+  - `partial` (bawaan): lot dibagi per TP sesuai `tp.bagi` (default 3 TP: 50/30/20). Angka **0** = tanpa lot di TP itu, misal `0 40 60` = TP2 40%, TP3 60%. Kalau lot terlalu kecil untuk dibagi, TP terjauh yang ada lot-nya dibuang. Pilihan *Kembalikan semua pembagian partial ke bawaan*, atau ketik `bawaan` di satu baris, untuk balik ke preset.
+  - `satu`: semua lot jadi satu order di TP ke-`tp.satu_ke`. Setup dengan TP lebih sedikit → TP terakhir.
+  - Di mode apa pun, BE dan trailing jalan menurut **harga**: TP1 tersentuh → SL ke BE walaupun di TP1 tidak ada lot.
 - **TP1 kena** → SL semua kaki sisa digeser ke entry + 10% jarak SL (`be_jarak_aman_r`).
 - **TP2 kena** → SL ke TP1, **TP3 kena** → SL ke TP2, dst. SL tidak pernah dilonggarkan.
 - Geser SL gagal → dicoba ulang tiap 15 detik. Harga sudah melewati SL baru sebelum sempat digeser → kaki ditutup di harga pasar.
@@ -108,12 +111,11 @@ Setelah kamu tekan **Ya**, cek harga diulang sekali lagi sebelum order dikirim.
 | `/stop` | Tolak setup baru + batalkan semua limit. Posisi yang jalan tetap dijaga |
 | `/lanjut` | Terima setup lagi |
 | `/limit` | Daftar limit yang menunggu: nomor, pair, arah, entry, SL, jam habis. Ada tombol batal per setup |
-| `/batal 12` | Batalkan limit setup #12 yang belum ke-fill |
 | `/hapuslimit` | Hapus semua limit yang belum ke-fill, tanpa mode stop. Posisi yang jalan tidak disentuh (ada tombol konfirmasi) |
 | `/tutupsemua` | Tutup semua posisi dan limit bot (ada tombol konfirmasi) |
 | `/resetjurnal` | Hapus riwayat setup (ada tombol konfirmasi). Hanya bisa kalau tidak ada setup aktif |
 
-**Reset jurnal** (lewat `/resetjurnal` atau `MENU.bat` → Utilitas → *Reset jurnal trade*): riwayat setup dihapus, jadi cek dobel mulai dari nol. Jurnal lama disalin dulu ke `data/jurnal-cadangan-<tanggal>.db`. Mode stop dan nomor setup tetap lanjut (tombol Telegram lama tidak bisa mengenai setup baru). Batas loss harian tidak ikut ter-reset karena dihitung dari MT5. Ditolak kalau masih ada limit terpasang atau posisi jalan; dari menu juga ditolak kalau bot sedang jalan (pakai `/resetjurnal`).
+**Reset jurnal** (lewat `/resetjurnal` atau `MENU.bat` → Utilitas → *Reset jurnal trade*): riwayat setup dihapus, jadi cek dobel mulai dari nol. Jurnal lama disalin dulu ke `data/jurnal-cadangan-<tanggal>.db`. Nomor setup mulai lagi dari #1; mode stop tetap. Jangan pencet tombol di pesan Telegram dari sebelum reset: nomornya bisa sama dengan setup baru. Batas loss harian tidak ikut ter-reset karena dihitung dari MT5. Ditolak kalau masih ada limit terpasang atau posisi jalan; dari menu juga ditolak kalau bot sedang jalan (pakai `/resetjurnal`).
 
 ## Pengaturan
 

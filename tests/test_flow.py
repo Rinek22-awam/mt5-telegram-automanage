@@ -378,7 +378,7 @@ def test_reset_journal_from_telegram(tmp_path):
     backups = list(tmp_path.glob("jurnal-cadangan-*.db"))
     assert len(backups) == 1 and len(Journal(str(backups[0])).since(0)) == 1
     post(app)
-    assert app.journal.by_status("awaiting_confirm")[-1]["id"] == 2    # numbering carries on
+    assert app.journal.by_status("awaiting_confirm")[-1]["id"] == 1    # numbering starts again
 
 
 def test_status_command():

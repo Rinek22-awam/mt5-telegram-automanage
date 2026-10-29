@@ -156,7 +156,7 @@ def reset_journal(cfg):
         backup = backup_path(db)
         print(f"\n  Reset jurnal menghapus riwayat {total} setup (cek dobel ikut mulai dari nol).")
         print(f"  Cadangan disimpan dulu ke: {backup}")
-        print("  Nomor setup berikutnya tetap lanjut. Batas loss harian tidak ikut ter-reset (dihitung dari MT5).")
+        print("  Nomor setup mulai lagi dari #1. Batas loss harian tidak ikut ter-reset (dihitung dari MT5).")
         if ask("\n  Ketik RESET untuk lanjut: ") != "RESET":
             print("  Dibatalkan, jurnal tidak diubah.")
             pause()

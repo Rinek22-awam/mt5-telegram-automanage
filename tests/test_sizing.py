@@ -44,5 +44,12 @@ def test_plan_legs_remainder_goes_to_first_leg():
     assert abs(sum(v for v, _ in legs) - 0.11) < 1e-9 and legs[0][0] == 0.06
 
 
+def test_plan_legs_zero_share_means_no_lot_on_that_tp():
+    split = {3: [0, 40, 60]}
+    assert plan_legs(1.0, [1, 2, 3], split, FX) == [(0.0, 1), (0.4, 2), (0.6, 3)]
+    assert plan_legs(0.01, [1, 2, 3], split, FX) == [(0.0, 1), (0.01, 2), (0.0, 3)]   # keeps TP2, drops TP3
+    assert plan_legs(0.05, [1, 2, 3], {3: [0, 0, 100]}, FX) == [(0.0, 1), (0.0, 2), (0.05, 3)]
+
+
 def test_plan_legs_more_tps_than_split():
     assert len(plan_legs(1.0, [1, 2, 3, 4, 5], SPLIT, FX)) == 3

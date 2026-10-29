@@ -79,13 +79,15 @@ class Journal:
 
     def reset(self, backup_to: str) -> int:
         """Copy the journal to `backup_to`, then forget all setups, legs and events.
-        Bot state (stop mode, Telegram offset) is kept, and numbering carries on
-        so old Telegram buttons cannot hit a new setup. Returns how many setups were removed."""
+        Bot state (stop mode, Telegram offset) is kept; numbering starts again at #1 (user's
+        choice: an old Telegram button for #1 could then reach the new #1). Returns how many
+        setups were removed."""
         dest = sqlite3.connect(backup_to)
         self.db.backup(dest)
         dest.close()
         n = self.db.execute("SELECT COUNT(*) FROM setups").fetchone()[0]
-        self.db.executescript("DELETE FROM setups; DELETE FROM legs; DELETE FROM events;")
+        self.db.executescript("DELETE FROM setups; DELETE FROM legs; DELETE FROM events; "
+                              "DELETE FROM sqlite_sequence WHERE name IN ('setups', 'legs', 'events');")
         return n
 
     def message_seen(self, chat: int, msg_id: int) -> bool:

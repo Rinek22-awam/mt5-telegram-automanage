@@ -29,6 +29,34 @@ def test_five_tps_split_and_trail_all_the_way():
     assert s["status"] == "done" and s["tp_level"] == 5
 
 
+def test_one_tp_mode_puts_whole_lot_on_tp3_and_still_moves_sl():
+    app, mt5, bot, _ = make({"tp": {"mode": "satu", "satu_ke": 3}})
+    post(app, SETUP)
+    assert "TP1 4000.0 (tanpa lot)" in bot.last and "TP3 4020.0 (0.1 lot)" in bot.last
+    press(app, "ya:1")
+    assert [(o.volume_current, o.tp) for o in mt5.orders.values()] == [(0.1, 4020.0)]
+    step(app, mt5, 3989.7)                      # fills
+    step(app, mt5, 4000.5)                      # TP1 touched, no leg there -> BE anyway
+    assert [p.sl for p in mt5.positions.values()] == [3991.0] and "menyentuh TP1" in bot.texts()
+    step(app, mt5, 4010.5)                      # TP2 touched -> SL to TP1
+    assert [p.sl for p in mt5.positions.values()] == [4000.0]
+    step(app, mt5, 4020.5)
+    assert not mt5.positions and "TP3 kena" in bot.texts()
+
+
+def test_one_tp_mode_on_setup_with_fewer_tps_uses_the_last():
+    app, mt5, bot, _ = make({"tp": {"mode": "satu", "satu_ke": 5}})
+    confirmed(app, SETUP)
+    assert [o.tp for o in mt5.orders.values()] == [4020.0]
+
+
+def test_partial_with_zero_skips_tp1():
+    app, mt5, bot, _ = make({"tp": {"bagi": {3: [0, 40, 60]}}})
+    confirmed(app, SETUP)
+    assert sorted((o.tp, o.volume_current) for o in mt5.orders.values()) == [(4010.0, 0.04), (4020.0, 0.06)]
+    assert {l["idx"] for l in app.journal.legs(1)} == {1, 2}
+
+
 def test_cent_account_converts_dollar_risk():
     # USC account: $10 risk = 1000 USC. A cent lot is 1/100 of a standard lot, so a $10
     # gold move on 1 cent lot = 1000 USC, the same numbers MT5 reports in USC.

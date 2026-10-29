@@ -13,7 +13,11 @@ risiko:
   # Satu setup bisa menimpa ini dengan baris "Risk: 0.5%" atau "Risk: $20".
 
 tp:
-  # Pembagian lot (%) per TP, menurut jumlah TP di setup.
+  mode: partial   # partial = lot dibagi ke tiap TP (lihat bagi) | satu = semua lot di satu TP
+  satu_ke: 1      # mode satu: semua lot ke TP ke-berapa (setup dengan TP lebih sedikit -> TP terakhir)
+  # BE dan trailing tetap jalan menurut harga, di mode apa pun (TP1 tersentuh -> SL ke BE).
+
+  # Mode partial: pembagian lot (%) per TP, menurut jumlah TP di setup.
   # Kalau lot terlalu kecil untuk dibagi, TP paling jauh dibuang.
   bagi:
     1: [100]

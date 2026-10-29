@@ -45,20 +45,27 @@ def lot_for_risk(risk: float, per_lot: float, spec: SymbolSpec,
 
 def plan_legs(total: float, tps: List[float], split: Dict[int, List[float]],
               spec: SymbolSpec) -> List[Tuple[float, float]]:
-    """Split `total` lot over the TPs as [(volume, tp), ...].
+    """Split `total` lot over the TPs as [(volume, tp), ...], one entry per TP from TP1.
 
-    Shares come from `split[number_of_tps]`. If the lot is too small for every leg to
-    reach the broker minimum, the farthest TP is dropped and the split retried.
+    Shares come from `split[number_of_tps]`; a share of 0 means no lot on that TP (volume 0,
+    no order). If the lot is too small for every leg to reach the broker minimum, the farthest
+    TP is dropped: a split without zeros falls back to the split for one TP fewer, a split
+    with zeros keeps its places and gives its farthest leg a 0.
     """
     n = min(len(tps), max(split) if split else len(tps))
-    while n >= 1:
-        shares = split.get(n) or [1] * n
+    shares = list(split.get(n) or [1] * n)
+    while any(x > 0 for x in shares):
         s = sum(shares)
-        legs = [round_volume(total * x / s, spec) for x in shares]
-        if all(l >= spec.volume_min for l in legs):
+        legs = [round_volume(total * x / s, spec) if x > 0 else 0.0 for x in shares]
+        if all(l >= spec.volume_min for l, x in zip(legs, shares) if x > 0):
             rest = round_volume(total - sum(legs), spec)
             if rest > 0:
-                legs[0] = round_volume(legs[0] + rest, spec)
-            return list(zip(legs, tps[:n]))
-        n -= 1
+                first = next(i for i, x in enumerate(shares) if x > 0)
+                legs[first] = round_volume(legs[first] + rest, spec)
+            return list(zip(legs, tps[:len(shares)]))
+        if 0 in shares:
+            shares[max(i for i, x in enumerate(shares) if x > 0)] = 0
+        else:
+            n -= 1
+            shares = list(split.get(n) or [1] * n)
     return []

@@ -18,7 +18,6 @@ HELP = ("Perintah:\n"
         "/stop  hentikan setup baru + batalkan semua limit\n"
         "/lanjut  terima setup baru lagi\n"
         "/limit  daftar limit yang menunggu, dengan tombol batal\n"
-        "/batal 12  batalkan limit setup #12 yang belum ke-fill\n"
         "/hapuslimit  hapus SEMUA limit yang belum ke-fill (ada konfirmasi)\n"
         "/tutupsemua  tutup SEMUA posisi bot (ada konfirmasi)\n"
         "/resetjurnal  hapus riwayat setup, ada cadangan (ada konfirmasi)")
@@ -186,7 +185,13 @@ class App:
                  f"{m.symbol} {s.side} {m.kind} @ {plan.entry}",
                  f"SL {s.sl}"]
         for i, tp in enumerate(s.tps):
-            lot = f"{plan.legs[i][0]} lot" if i < len(plan.legs) else "tidak dipakai, lot kurang"
+            vol = plan.legs[i][0] if i < len(plan.legs) else 0
+            if vol:
+                lot = f"{vol} lot"
+            elif i < len(plan.legs) or self.cfg["tp"]["mode"] == "satu":
+                lot = "tanpa lot"
+            else:
+                lot = "tidak dipakai, lot kurang"
             lines.append(f"TP{i + 1} {tp} ({lot})")
         cur = self.broker.account().currency
         lines += [f"Lot total {plan.total_lot} · Risiko {plan.actual_risk:.2f} {cur} ({risk_txt})",
@@ -316,7 +321,7 @@ class App:
         elif cmd == "/lanjut":
             self.journal.set_kv("paused", False)
             self.notify("▶️ Bot menerima setup lagi.")
-        elif cmd == "/batal" and len(parts) > 1 and parts[1].lstrip("#").isdigit():
+        elif cmd == "/batal" and len(parts) > 1 and parts[1].lstrip("#").isdigit():   # not in HELP: /limit has buttons
             n = self.guard.cancel_pending(int(parts[1].lstrip("#")))
             self.notify(f"{n} limit setup #{parts[1].lstrip('#')} dibatalkan.")
         elif cmd == "/limit":
@@ -338,7 +343,8 @@ class App:
                 self.notify(busy)
             else:
                 self.notify(f"Yakin reset jurnal? Riwayat {len(self.journal.since(0))} setup dihapus "
-                            f"(cek dobel ikut mulai dari nol), cadangan disimpan di folder data. "
+                            f"(cek dobel ikut mulai dari nol, nomor setup mulai lagi dari #1), "
+                            f"cadangan disimpan di folder data. "
                             f"Batas loss harian tidak ikut ter-reset (dihitung dari MT5).",
                             buttons=[[("🗑 Ya, reset", "resetjurnal:ya"), ("Batal", "resetjurnal:tidak")]])
         else:

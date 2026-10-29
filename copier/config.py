@@ -6,7 +6,8 @@ import yaml
 DEFAULTS = {
     "akun": {"hanya_demo": True},
     "risiko": {"mode": "persen", "persen": 1.0, "dolar": 10.0, "lot_maks": 5.0},
-    "tp": {"bagi": {1: [100], 2: [50, 50], 3: [50, 30, 20],
+    "tp": {"mode": "partial", "satu_ke": 1,
+           "bagi": {1: [100], 2: [50, 50], 3: [50, 30, 20],
                     4: [40, 30, 20, 10], 5: [30, 25, 20, 15, 10]}},
     "sop": {"be_setelah_tp": 1, "be_jarak_aman_r": 0.1, "trailing": True,
             "tutup_jika_sl_baru_terlewat": True},
@@ -55,4 +56,9 @@ def with_defaults(user: dict) -> dict:
     mode = cfg["risiko"]["mode"]
     if mode not in ("persen", "dolar"):
         raise ValueError(f"risiko.mode harus 'persen' atau 'dolar', bukan {mode!r}")
+    tp = cfg["tp"]
+    if tp["mode"] not in ("partial", "satu"):
+        raise ValueError(f"tp.mode harus 'partial' atau 'satu', bukan {tp['mode']!r}")
+    if not isinstance(tp["satu_ke"], int) or tp["satu_ke"] < 1:
+        raise ValueError(f"tp.satu_ke harus angka 1 atau lebih, bukan {tp['satu_ke']!r}")
     return cfg

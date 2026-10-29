@@ -11,7 +11,7 @@ class Plan:
     entry: float               # price used for sizing (limit price, or market price)
     risk: float                # money at risk if every leg hits SL
     total_lot: float
-    legs: List[Tuple[float, float]]   # (volume, tp)
+    legs: List[Tuple[float, float]]   # (volume, tp) per TP from TP1; volume 0 = no order there
     actual_risk: float
     error: str = ""
 
@@ -38,7 +38,12 @@ class Executor:
             need = spec.volume_min * per_lot
             return Plan(entry, risk, 0, [], 0, f"Lot di bawah minimum broker (risiko {risk:.2f}, "
                                                 f"butuh minimal {need:.2f} untuk {spec.volume_min} lot)")
-        legs = plan_legs(total, s.tps, self.cfg["tp"]["bagi"], spec)
+        tp = self.cfg["tp"]
+        split = tp["bagi"]
+        if tp["mode"] == "satu":   # the whole lot on one TP: a split with zeros before it
+            k = min(tp["satu_ke"], len(s.tps))
+            split = {k: [0] * (k - 1) + [100]}
+        legs = plan_legs(total, s.tps, split, spec)
         if not legs:
             return Plan(entry, risk, total, [], 0, "Lot tidak bisa dibagi ke TP")
         return Plan(entry, risk, total, legs, round(sum(v for v, _ in legs) * per_lot, 2))
@@ -46,13 +51,14 @@ class Executor:
     def execute(self, setup_id: int, s: Setup, market, plan: Plan) -> Tuple[bool, str]:
         """Place every leg. If any leg fails, roll back the ones already placed."""
         placed, err = [], ""
-        for i, (vol, tp) in enumerate(plan.legs):
+        wanted = [(i, vol, tp) for i, (vol, tp) in enumerate(plan.legs) if vol > 0]   # i = TP index
+        for i, vol, tp in wanted:
             ticket, err = self.broker.place(market.symbol, s.side, market.kind, vol, plan.entry,
                                             s.sl, tp, f"su{setup_id}-{i + 1}")
             if ticket is None:
                 break
             placed.append((i, ticket, vol, tp))
-        if len(placed) < len(plan.legs):
+        if len(placed) < len(wanted):
             for _, ticket, _, _ in placed:
                 if market.kind == "MARKET":
                     self.broker.close(ticket)

@@ -62,6 +62,7 @@ def test_symbols_add_edit_remove(cfg_file):
     ("float", (0.01, 20), "1,5", 1.5), ("int", (0, 10), "2", 2),
     ("float_or_null", (0.01, 100), "", None), ("float_or_null", (0.01, 100), "25", 25.0),
     ("split", 3, "50 30 20", [50, 30, 20]), ("split", 3, "50/30/20", [50, 30, 20]),
+    ("split", 3, "0 40 60", [0, 40, 60]),
 ])
 def test_parse_accepts(kind, options, raw, value):
     assert parse(kind, options, raw) == value
@@ -69,7 +70,7 @@ def test_parse_accepts(kind, options, raw, value):
 
 @pytest.mark.parametrize("kind,options,raw", [
     ("bool", None, "mungkin"), ("choice", ["persen", "dolar"], "3"), ("float", (0.01, 20), "50"),
-    ("float", (0.01, 20), "abc"), ("split", 3, "50 50"), ("split", 3, "50 -30 20"), ("text", None, ""),
+    ("float", (0.01, 20), "abc"), ("split", 3, "50 50"), ("split", 3, "50 -30 20"), ("split", 2, "0 0"), ("text", None, ""),
 ])
 def test_parse_rejects(kind, options, raw):
     with pytest.raises(ValueError):
@@ -110,3 +111,23 @@ def test_reset_journal_menu(monkeypatch, tmp_path):
     assert len(Journal(str(db)).since(0)) == 1 and not list(tmp_path.glob("jurnal-cadangan-*"))
     main.reset_journal(cfg)
     assert not Journal(str(db)).since(0) and len(list(tmp_path.glob("jurnal-cadangan-*"))) == 1
+
+
+def test_split_reset_to_presets(monkeypatch, cfg_file):
+    from panel import settings
+    s = Settings(str(cfg_file))
+    s.set(("tp", "bagi", "2"), [30, 70])
+    s.set(("tp", "bagi", "3"), [20, 30, 50])
+    answers = iter(["bawaan"])
+    monkeypatch.setattr(settings, "ask", lambda _: next(answers))
+    monkeypatch.setattr(settings, "pause", lambda: None)
+    s.edit(("tp", "bagi", "2"), "Setup dengan 2 TP", "split", 2, "")       # one row back to preset
+    assert s.cfg()["tp"]["bagi"][2] == [50, 50] and s.cfg()["tp"]["bagi"][3] == [20, 30, 50]
+    s.set(("tp", "bagi", "2"), [30, 70])
+    split_items = [it for it in dict(SECTIONS)[settings.SPLIT_SECTION] if it[2] == "split"]
+    answers = iter(["t", "y"])
+    s.reset_all(split_items)                                               # "t" changes nothing
+    assert s.cfg()["tp"]["bagi"][2] == [30, 70]
+    s.reset_all(split_items)
+    assert s.cfg()["tp"]["bagi"] == {1: [100], 2: [50, 50], 3: [50, 30, 20],
+                                     4: [40, 30, 20, 10], 5: [30, 25, 20, 15, 10]}

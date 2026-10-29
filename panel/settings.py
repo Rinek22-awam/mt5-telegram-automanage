@@ -1,7 +1,7 @@
 """SOP settings screen: every number in config.yaml, editable without opening the file."""
 import yaml
 
-from copier.config import with_defaults
+from copier.config import DEFAULTS, with_defaults
 from copier.setup_format import parse_number
 
 from .ui import ask, choose, clear, pause, title
@@ -19,7 +19,14 @@ SECTIONS = [
         (("risiko", "lot_maks"), "Lot maksimal per setup", "float", (0.01, 1e4), ""),
     ]),
     ("Pembagian lot per TP", [
-        (("tp", "bagi", str(n)), f"Setup dengan {n} TP", "split", n, "persen lot tiap TP, dari TP1")
+        (("tp", "mode"), "Mode TP", "choice", ["partial", "satu"],
+         "partial = lot dibagi per TP (baris di bawah), satu = semua lot di satu TP. "
+         "BE dan trailing tetap jalan menurut harga"),
+        (("tp", "satu_ke"), "Mode satu: semua lot ke TP ke-", "int", (1, 10),
+         "setup dengan TP lebih sedikit -> TP terakhir"),
+    ] + [
+        (("tp", "bagi", str(n)), f"Partial: setup dengan {n} TP", "split", n,
+         "persen lot tiap TP, dari TP1; 0 = tanpa lot di TP itu")
         for n in range(1, 6)
     ]),
     ("SOP posisi (BE dan trailing)", [
@@ -57,6 +64,8 @@ SECTIONS = [
          "sonnet = seimbang, opus = paling teliti, haiku = paling hemat kuota"),
     ]),
 ]
+SPLIT_SECTION = "Pembagian lot per TP"
+RESET_WORD = "bawaan"
 
 
 def _get(cfg, path):
@@ -98,8 +107,8 @@ def parse(kind, options, raw: str):
         return raw
     if kind == "split":
         parts = [parse_number(x) for x in raw.replace("/", " ").replace(";", " ").split()]
-        if len(parts) != options or any(p is None or p <= 0 for p in parts):
-            raise ValueError(f"isi {options} angka positif, misal: " +
+        if len(parts) != options or any(p is None or p < 0 for p in parts) or not any(parts):
+            raise ValueError(f"isi {options} angka (0 boleh, minimal satu di atas 0), misal: " +
                              " ".join(["50", "30", "20", "10", "5"][:options]))
         return [int(p) if p == int(p) else p for p in parts]
     if kind == "float_or_null" and raw.lower() in ("", "0", "-", "mati", "kosong"):
@@ -157,10 +166,27 @@ class Settings:
             title(name.upper())
             cfg = self.cfg()
             rows = [f"{label:<42} {show(_get(cfg, path))}" for path, label, *_ in items]
+            splits = [it for it in items if it[2] == "split"]
+            if name == SPLIT_SECTION:
+                rows.append("↺ Kembalikan semua pembagian partial ke bawaan (" +
+                            ", ".join(show(_get(DEFAULTS, p)) for p, *_ in splits) + ")")
             pick = choose(rows, back="Kembali")
             if pick is None:
                 return
-            self.edit(*items[pick])
+            if pick == len(items):
+                self.reset_all(splits)
+            else:
+                self.edit(*items[pick])
+
+    def reset_all(self, items):
+        if ask("\n  Kembalikan semua pembagian partial ke bawaan? (y/t): ").lower() not in ("y", "ya"):
+            return
+        for path, *_ in items:
+            self.set(path, _get(DEFAULTS, path))
+        print("\n  Tersimpan: semua pembagian partial kembali ke bawaan.")
+        if self.bot_running():
+            print("  Bot sedang jalan: perubahan berlaku setelah bot dinyalakan ulang.")
+        pause()
 
     def edit(self, path, label, kind, options, note):
         current = _get(self.cfg(), path)
@@ -170,14 +196,16 @@ class Settings:
         if kind == "choice":
             for i, o in enumerate(options, 1):
                 print(f"    {i}. {o}")
-        hint = {"bool": " (y/t)", "choice": " (nomor)", "float_or_null": " (kosong = mati)"}.get(kind, "")
+        hint = {"bool": " (y/t)", "choice": " (nomor)", "float_or_null": " (kosong = mati)",
+                "split": f" ({RESET_WORD} = {show(_get(DEFAULTS, path))})"}.get(kind, "")
         raw = ask(f"  Nilai baru{hint}, Enter saja = batal: ")
         if raw == "" and kind != "float_or_null":
             return
         if raw == "" and kind == "float_or_null" and current is None:
             return
         try:
-            value = parse(kind, options, raw)
+            value = _get(DEFAULTS, path) if kind == "split" and raw.lower() == RESET_WORD \
+                else parse(kind, options, raw)
         except ValueError as e:
             print(f"\n  [X] {e}. Tidak diubah.")
             pause()
