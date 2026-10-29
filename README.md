@@ -136,7 +136,7 @@ Pembaca memposting pakai akunmu (bukan bot), karena bot Telegram tidak menerima 
 2. **Login Claude Code:** buka PowerShell, ketik `claude auth login`, lalu login di browser dengan akun Claude Pro-mu. Cukup sekali. Cek dengan `claude auth status`.
    Claude di pembaca dikunci: hanya boleh membaca file gambar di folder sementara, tanpa MCP dan tanpa pengaturan lain. Pemakaiannya ikut kuota Pro.
 3. **Coba Claude dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
-4. **Cari ID channel sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login yang dikirim Telegram. Login tersimpan di file `pembaca.session` (tidak ikut git, jangan dibagikan). Salin ID channel sinyal ke `pembaca.channel_sumber` di `config.yaml`. Kalau grupnya **bertopik** dan sinyal hanya di satu topik, jalankan sekali lagi: di bawah daftar channel muncul daftar topik. Salin nomor topik sinyal ke `pembaca.topik_sumber`; pesan dari topik lain diabaikan.
+4. **Pilih channel dan topik sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login dari Telegram; login tersimpan di `pembaca.session` (tidak ikut git, jangan dibagikan). Muncul daftar channel → ketik ID channel sinyal → muncul daftar topiknya → ketik nomor topik sinyal (atau `0` untuk semua topik). Pilihanmu langsung disimpan ke `config.yaml`; tekan Enter saja kalau cuma mau melihat.
 5. **Jalankan:** klik dua kali **`Nyalakan Pembaca.bat`**, dan **`Nyalakan Bot.bat`** di jendela lain. Dua-duanya harus menyala.
 
 ## Akun cent

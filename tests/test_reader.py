@@ -129,3 +129,74 @@ def test_claude_reader_reports_errors(tmp_path):
         return NS(stdout="not json", stderr="")
     with pytest.raises(RuntimeError, match="JSON"):
         ClaudeReader(workdir=str(tmp_path), run=garbage).read(b"x")
+
+
+def test_save_source_keeps_comments(tmp_path):
+    import shutil
+    import yaml
+    from reader.main import save_source
+    cfg = tmp_path / "config.yaml"
+    shutil.copy("config.yaml", cfg)
+    save_source(str(cfg), "-1004307070844", 12)
+    text = cfg.read_text(encoding="utf-8")
+    p = yaml.safe_load(text)["pembaca"]
+    assert (p["channel_sumber"], p["topik_sumber"]) == ("-1004307070844", 12)
+    assert "# ID channel sinyal" in text and "# grup bertopik" in text
+    save_source(str(cfg), "-1004307070844", None)
+    assert yaml.safe_load(cfg.read_text(encoding="utf-8"))["pembaca"]["topik_sumber"] is None
+
+
+class _FakeClient:
+    """Just enough of a Telethon client for find_source."""
+    def __init__(self, forum=True):
+        from types import SimpleNamespace as NS
+        self.NS, self.forum = NS, forum
+
+    async def iter_dialogs(self):
+        yield self.NS(is_channel=True, id=-1004307070844, name="Tes Rinek")
+
+    async def get_entity(self, peer):
+        if peer != -1004307070844:
+            raise ValueError("not found")
+        return self.NS(title="Tes Rinek", forum=self.forum)
+
+    async def __call__(self, request):
+        NS = self.NS
+        return NS(topics=[NS(id=1, title="General"), NS(id=12, title="Sinyal")])
+
+
+def _find(monkeypatch, tmp_path, answers, forum=True):
+    import asyncio
+    import shutil
+    from reader.main import find_source
+    cfg = tmp_path / "config.yaml"
+    shutil.copy("config.yaml", cfg)
+    replies = iter(answers)
+    monkeypatch.setattr("builtins.input", lambda *_: next(replies))
+    asyncio.run(find_source(_FakeClient(forum), "-1002631236672", str(cfg)))
+    import yaml
+    return yaml.safe_load(cfg.read_text(encoding="utf-8"))["pembaca"]
+
+
+def test_find_source_lists_topics_and_saves(monkeypatch, tmp_path, capsys):
+    p = _find(monkeypatch, tmp_path, ["-1004307070844", "12"])
+    out = capsys.readouterr().out
+    assert "12   Sinyal" in out and "Tersimpan" in out
+    assert (p["channel_sumber"], p["topik_sumber"]) == ("-1004307070844", 12)
+
+
+def test_find_source_enter_changes_nothing(monkeypatch, tmp_path):
+    p = _find(monkeypatch, tmp_path, ["-1004307070844", ""])
+    assert (p["channel_sumber"], p["topik_sumber"]) == ("-1002631236672", 78395)
+
+
+def test_find_source_rejects_unknown_topic_and_channel(monkeypatch, tmp_path, capsys):
+    p = _find(monkeypatch, tmp_path, ["-1004307070844", "999"])
+    assert p["topik_sumber"] == 78395 and "tidak ada di daftar" in capsys.readouterr().out
+    p = _find(monkeypatch, tmp_path, ["-100111", ""])
+    assert p["channel_sumber"] == "-1002631236672" and "tidak ditemukan" in capsys.readouterr().out
+
+
+def test_find_source_without_topics(monkeypatch, tmp_path):
+    p = _find(monkeypatch, tmp_path, ["-1004307070844", "y"], forum=False)
+    assert (p["channel_sumber"], p["topik_sumber"]) == ("-1004307070844", None)

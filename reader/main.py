@@ -9,6 +9,7 @@ import asyncio
 import io
 import logging
 import os
+import re
 import sys
 
 from dotenv import load_dotenv
@@ -42,29 +43,64 @@ def topic_of(msg) -> int:
     return 1
 
 
-async def list_channels(client, source_id):
+def save_source(path: str, channel: str, topic) -> None:
+    """Write pembaca.channel_sumber / topik_sumber into config.yaml, keeping its comments."""
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    text, n1 = re.subn(r'(?m)^(  channel_sumber:[ \t]*)("[^"\n]*"|[^\s#]+)', rf'\g<1>"{channel}"', text)
+    text, n2 = re.subn(r'(?m)^(  topik_sumber:[ \t]*)([^\s#]+)',
+                       rf'\g<1>{topic if topic else "null"}', text)
+    if not (n1 and n2):
+        raise ValueError("baris channel_sumber / topik_sumber tidak ditemukan di config.yaml")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+async def find_source(client, current: str, config_path: str):
+    """List channels, ask which one, list its topics, optionally save both to config."""
     from telethon import functions
 
-    print("Channel yang kamu ikuti (salin ID-nya ke pembaca.channel_sumber di config.yaml):\n")
+    print("Channel dan grup yang kamu ikuti:\n")
     async for d in client.iter_dialogs():
         if d.is_channel:
             print(f"  {d.id:>16}   {d.name}")
-    if not source_id:
+    print(f"\nSumber di config sekarang: {current or '(kosong)'}")
+    chosen = input("Ketik ID channel yang mau dicek (Enter = pakai yang di config): ").strip() or current
+    if not chosen:
         return
-    source = await client.get_entity(_peer(source_id))
-    print(f"\nTopik di '{getattr(source, 'title', source_id)}' "
-          f"(salin nomornya ke pembaca.topik_sumber di config.yaml):\n")
-    if not getattr(source, "forum", False):
-        print("  Grup/channel ini tidak memakai topik. Biarkan topik_sumber kosong.")
+    try:
+        source = await client.get_entity(_peer(chosen))
+    except (ValueError, TypeError):
+        print(f"\n[X] ID {chosen} tidak ditemukan di daftar. Pastikan akunmu sudah join channel itu.")
         return
-    res = await client(functions.messages.GetForumTopicsRequest(
-        peer=source, offset_date=None, offset_id=0, offset_topic=0, limit=100))
-    for t in res.topics:
-        if getattr(t, "title", None):
-            print(f"  {t.id:>8}   {t.title}")
+    title = getattr(source, "title", chosen)
+    topics = {}
+    if getattr(source, "forum", False):
+        res = await client(functions.messages.GetForumTopicsRequest(
+            peer=source, offset_date=None, offset_id=0, offset_topic=0, limit=100))
+        topics = {t.id: t.title for t in res.topics if getattr(t, "title", None)}
+        print(f"\nTopik di '{title}':\n")
+        for tid, name in topics.items():
+            print(f"  {tid:>8}   {name}")
+        answer = input("\nKetik nomor topik sinyal untuk disimpan ke config "
+                       "(0 = semua topik, Enter = tidak disimpan): ").strip()
+    else:
+        print(f"\n'{title}' tidak memakai topik: semua pesannya akan dibaca.")
+        answer = "0" if input("Simpan sebagai sumber di config? (y/n): ").strip().lower() == "y" else ""
+    if not answer:
+        print("Config tidak diubah.")
+        return
+    if not answer.isdigit() or (answer != "0" and int(answer) not in topics):
+        print(f"[X] Nomor topik {answer} tidak ada di daftar. Config tidak diubah.")
+        return
+    topic = int(answer) or None
+    save_source(config_path, str(chosen), topic)
+    print(f"\nTersimpan: channel_sumber = {chosen}, topik_sumber = {topic or 'semua'}"
+          f"{' (' + topics[topic] + ')' if topic else ''}.")
+    print("Restart pembaca (tutup jendelanya, klik dua kali Nyalakan Pembaca.bat) supaya berlaku.")
 
 
-async def run(cfg: dict, find: bool):
+async def run(cfg: dict, find: bool, config_path: str = "config.yaml"):
     from telethon import TelegramClient, events
 
     p = cfg["pembaca"]
@@ -72,7 +108,7 @@ async def run(cfg: dict, find: bool):
     await client.start()   # first run asks for phone number and login code in this window
     if find:
         await client.get_dialogs()
-        await list_channels(client, p["channel_sumber"])
+        await find_source(client, str(p["channel_sumber"] or ""), config_path)
         return
 
     if not p["channel_sumber"]:
@@ -158,7 +194,7 @@ def main():
     if a.coba_gambar:
         try_image(load_config(a.config), a.coba_gambar)
         return
-    asyncio.run(run(load_config(a.config), a.cari_channel))
+    asyncio.run(run(load_config(a.config), a.cari_channel, a.config))
 
 
 if __name__ == "__main__":
