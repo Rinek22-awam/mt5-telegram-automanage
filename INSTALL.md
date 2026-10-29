@@ -130,4 +130,4 @@ Dokumen rencana, status terakhir, dan keputusan proyek ada di folder `docs/` rep
 | Pembaca: "Claude gagal membaca: OAuth ..." | CLI `claude` belum login / sesi habis | `claude auth login` |
 | "Bot sudah jalan di jendela lain" | Bot sudah menyala | Pakai jendela yang ada, atau tutup dulu |
 | Setup ditolak "Simbol ... tidak ada di MT5" | Nama simbol beda (akhiran `m`/`c`, ganti broker) | Utilitas → Cocokkan nama pair dengan broker |
-| Gambar contoh lama ditolak "Entry terlalu jauh" / "TP1 sudah terlewat" | Harga di gambar sudah basi | Normal; gerbang bekerja |
+| Gambar contoh lama ditolak "Entry terlalu jauh" / "TP1 sudah terlewat" (market) | Harga di gambar sudah basi | Normal; gerbang bekerja |

@@ -81,7 +81,7 @@ Angka boleh format biasa (`3987.26`) atau Indonesia (`3.987,26`). Postingan tanp
 
 ## Apa yang dicek gerbang
 
-- Simbol ada di MT5, SL dan TP di sisi yang benar, SL/TP1 belum terlewat harga.
+- Simbol ada di MT5, SL dan TP di sisi yang benar, SL belum terlewat harga. TP1 sudah terlewat → order market ditolak, order limit tetap ditanyakan dengan tanda ⚠️ (limit menunggu harga balik ke entry).
 - Postingan tidak basi (default 30 menit), entry tidak terlalu jauh dari harga (default 1%).
 - **Dobel** (sama persis dalam 24 jam) → ditolak. **Mirip** (pair & arah sama, entry dekat) → tetap ditanyakan dengan tanda ⚠️.
 - Bot tidak sedang di-stop, setup aktif belum penuh (default 3), batas loss harian belum kena (default 3%).

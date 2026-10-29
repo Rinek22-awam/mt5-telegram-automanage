@@ -106,8 +106,7 @@ class Gate:
         if s.side == "BUY" and s.sl >= bid or s.side == "SELL" and s.sl <= ask:
             v.reasons.append("SL sudah terlewat oleh harga sekarang")
         tp1 = s.tps[0]
-        if s.side == "BUY" and tp1 <= bid or s.side == "SELL" and tp1 >= ask:
-            v.reasons.append("TP1 sudah terlewat oleh harga sekarang")
+        tp1_passed = s.side == "BUY" and tp1 <= bid or s.side == "SELL" and tp1 >= ask
         if s.entry is not None and kind != "MARKET":
             mid = (bid + ask) / 2
             dev = abs(s.entry - mid) / mid * 100
@@ -126,6 +125,12 @@ class Gate:
             gap = self.broker.min_stop_distance(sym)
             if gap and kind != "MARKET" and abs(s.entry - s.sl) < gap:
                 v.reasons.append("Jarak SL terlalu dekat untuk aturan broker")
+        if tp1_passed:
+            # a limit still waits for price to come back to entry; entering now would be past TP1
+            if kind == "LIMIT":
+                v.warnings.append("Harga sekarang sudah lewat TP1, limit menunggu harga balik ke entry")
+            else:
+                v.reasons.append("TP1 sudah terlewat oleh harga sekarang")
         v.market = Market(sym, bid, ask, kind)
 
 

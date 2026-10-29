@@ -160,6 +160,24 @@ def test_rejects_old_post_and_wrong_symbol():
     assert "tidak ada di MT5" in bot.last
 
 
+def test_limit_past_tp1_is_asked_not_rejected():
+    app, mt5, bot, _ = make({"gerbang": {"konfirmasi_wajib": False}}, mt5=FakeMT5(bid=4005.0))
+    post(app)
+    assert "perlu konfirmasi" in bot.last and "lewat TP1" in bot.last and not mt5.orders
+    press(app, "ya:1")
+    assert len(mt5.orders) == 3                 # limits wait below price
+    step(app, mt5, 3989.7)                      # price comes back, limits fill
+    assert [p.sl for p in mt5.positions.values()] == [3980.0] * 3   # earlier high is not a TP1 hit
+
+
+def test_market_past_tp1_is_rejected():
+    app, mt5, bot, _ = make(mt5=FakeMT5(bid=4005.0))
+    post(app, SETUP.replace("Entry: 3990\n", "Order: MARKET\n"))
+    assert "TP1 sudah terlewat" in bot.last and not mt5.positions
+    post(app, SETUP.replace("Entry: 3990", "Entry: 3992\nOrder: STOP"))   # stop already passed -> market
+    assert "TP1 sudah terlewat" in bot.last and not mt5.positions
+
+
 def test_rejects_entry_far_from_price():
     app, _, bot, _ = make(mt5=FakeMT5(bid=4200.0))
     post(app, SETUP.replace("TP1: 4000", "TP1: 4300").replace("TP2: 4010", "TP2: 4310")
