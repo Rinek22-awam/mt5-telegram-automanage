@@ -119,9 +119,9 @@ Rahasia **tidak** ditulis di `config.yaml`, tapi di `.env` (tidak ikut ke git).
 
 ## Pembaca sinyal (program kedua)
 
-Menonton **channel sinyal** pakai akun Telegram-mu, membaca gambar sinyal dengan **Gemini**, lalu memposting `SETUP` (beserta gambar aslinya) ke channel kotak masuk. Pesan teks dari channel sinyal diposting sebagai `UPDATE`. Pembaca **tidak pernah trading**; semua tetap lewat gerbang dan konfirmasi bot.
+Menonton **channel sinyal** pakai akun Telegram-mu, membaca gambar sinyal dengan **Claude** (Claude Code, ikut langganan Pro), lalu memposting `SETUP` (beserta gambar aslinya) ke channel kotak masuk. Pesan teks dari channel sinyal diposting sebagai `UPDATE`. Pembaca **tidak pernah trading**; semua tetap lewat gerbang dan konfirmasi bot.
 
-Gemini hanya menyalin label angka dan warna garis (merah = SL, biru = entry, hitam = TP). Yang menentukan arah, entry, dan simbol adalah kode biasa:
+Claude hanya menyalin label angka dan warna garis (merah = SL, biru = entry, hitam = TP). Yang menentukan arah, entry, dan simbol adalah kode biasa:
 - **Arah:** SL di bawah entry = BUY, di atas = SELL.
 - **Dua entry:** dipakai yang paling dekat ke TP (yang ke-fill duluan); yang lain dicatat sebagai `Entry2`.
 - **Simbol:** dari nama di gambar kalau ada, kalau tidak dari besar harga (`simbol_dari_harga` di config: 1.000–10.000 = gold, di atas 10.000 = BTC).
@@ -133,8 +133,9 @@ Pembaca memposting pakai akunmu (bukan bot), karena bot Telegram tidak menerima 
 ### Pasang pembaca
 
 1. **API Telegram:** buka https://my.telegram.org → login → *API development tools* → buat aplikasi (nama bebas). Salin **api_id** dan **api_hash** ke `TG_API_ID` dan `TG_API_HASH` di `.env`. Ini akses ke akunmu: jangan dibagikan.
-2. **API key Gemini:** buka https://aistudio.google.com → *Get API key* → buat key, salin ke `GEMINI_API_KEY` di `.env`.
-3. **Coba Gemini dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
+2. **Login Claude Code:** buka PowerShell, ketik `claude auth login`, lalu login di browser dengan akun Claude Pro-mu. Cukup sekali. Cek dengan `claude auth status`.
+   Claude di pembaca dikunci: hanya boleh membaca file gambar di folder sementara, tanpa MCP dan tanpa pengaturan lain. Pemakaiannya ikut kuota Pro.
+3. **Coba Claude dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
 4. **Cari ID channel sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login yang dikirim Telegram. Login tersimpan di file `pembaca.session` (tidak ikut git, jangan dibagikan). Salin ID channel sinyal ke `pembaca.channel_sumber` di `config.yaml`. Kalau grupnya **bertopik** dan sinyal hanya di satu topik, jalankan sekali lagi: di bawah daftar channel muncul daftar topik. Salin nomor topik sinyal ke `pembaca.topik_sumber`; pesan dari topik lain diabaikan.
 5. **Jalankan:** klik dua kali **`Nyalakan Pembaca.bat`**, dan **`Nyalakan Bot.bat`** di jendela lain. Dua-duanya harus menyala.
 
@@ -162,8 +163,8 @@ copier/broker.py        pembungkus MetaTrader5 (mode pengisian order, status kak
 copier/telegram.py      klien Bot API Telegram (tanpa paket tambahan)
 copier/app.py           alur kotak masuk -> konfirmasi -> eksekusi, perintah
 copier/main.py          titik masuk bot
-reader/chart.py         hasil baca Gemini -> SETUP (arah, entry, simbol)
-reader/vision.py        panggilan Gemini
+reader/chart.py         hasil baca Claude -> SETUP (arah, entry, simbol)
+reader/vision.py        panggilan Claude Code (claude -p) yang dikunci
 reader/updates.py       pesan teks channel -> UPDATE
 reader/main.py          pembaca: akun Telegram-mu menonton channel sinyal
 config.yaml             semua angka SOP

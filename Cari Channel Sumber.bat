@@ -20,7 +20,7 @@ if not exist ".env" (
     goto selesai
 )
 
-python -c "import MetaTrader5, dotenv, yaml, telethon, google.genai" >nul 2>nul
+python -c "import MetaTrader5, dotenv, yaml, telethon" >nul 2>nul
 if errorlevel 1 (
     echo Memasang paket yang dibutuhkan, tunggu sebentar...
     python -m pip install -q -r requirements.txt

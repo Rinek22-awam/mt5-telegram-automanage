@@ -65,7 +65,7 @@ pembaca:                      # program kedua: channel sinyal -> channel kotak m
   channel_sumber: "-1002631236672"   # ID channel sinyal (cari dengan "Cari Channel Sumber.bat")
   topik_sumber: 78395         # grup bertopik: nomor topik sinyal (lihat "Cari Channel Sumber.bat"); null = semua
   nama_sumber: outlook        # nama yang ditulis di baris "Sumber:" dan di jurnal
-  gemini_model: gemini-flash-latest   # model Gemini pembaca gambar (cek yang gratis di AI Studio)
+  claude_model: sonnet        # model Claude untuk membaca gambar (sonnet / opus / haiku)
   simbol_dari_harga:          # gambar tanpa nama simbol: ditebak dari besar harganya
     - {simbol: XAUUSD, min: 1000, max: 10000, alias: [GOLD, XAU]}
     - {simbol: BTCUSD, min: 10000, max: 1000000, alias: [BTC, BTCUSDT]}

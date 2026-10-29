@@ -21,7 +21,7 @@ DEFAULTS = {
     "bot": {"interval_detik": 2, "jurnal": "data/jurnal.db"},
     "pembaca": {
         "channel_sumber": "", "topik_sumber": None, "nama_sumber": "sumber",
-        "gemini_model": "gemini-flash-latest",
+        "claude_model": "sonnet",
         "simbol_dari_harga": [
             {"simbol": "XAUUSD", "min": 1000, "max": 10000, "alias": ["GOLD", "XAU"]},
             {"simbol": "BTCUSD", "min": 10000, "max": 1000000, "alias": ["BTC", "BTCUSDT"]}],

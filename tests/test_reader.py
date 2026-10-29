@@ -1,4 +1,4 @@
-"""Reader logic without Telegram or Gemini: model JSON -> SETUP, text -> UPDATE."""
+"""Reader logic without Telegram or Claude: model JSON -> SETUP, text -> UPDATE."""
 from copier.config import with_defaults
 from copier.setup_format import parse_setup, parse_update
 from reader.chart import build_setup, symbol_for
@@ -91,3 +91,41 @@ def test_topic_of_forum_messages():
     # a reply inside topic 42 points at the replied message; the topic is reply_to_top_id
     assert topic_of(NS(reply_to=NS(forum_topic=True, reply_to_top_id=42, reply_to_msg_id=977))) == 42
     assert topic_of(NS(reply_to=NS(forum_topic=False, reply_to_top_id=None, reply_to_msg_id=5))) == 1
+
+
+def test_claude_reader_is_locked_down_and_cleans_up(tmp_path):
+    import json, os
+    from types import SimpleNamespace as NS
+    from reader.vision import ClaudeReader
+    seen = {}
+
+    def fake_run(cmd, cwd, **kw):
+        seen.update(cmd=cmd, cwd=cwd, files=os.listdir(cwd))
+        reply = '```json\n{"is_signal": true, "entries": ["3.987,260"], "sl": "3.981,260", "tps": ["3.993,260"]}\n```'
+        return NS(stdout=json.dumps({"is_error": False, "result": reply}), stderr="")
+
+    r = ClaudeReader("sonnet", workdir=str(tmp_path), run=fake_run)
+    read = r.read(b"\x89PNG...", "image/png")
+    assert read["entries"] == ["3.987,260"] and read["sl"] == "3.981,260"
+    cmd = seen["cmd"]
+    assert cmd[cmd.index("--tools") + 1] == "Read"            # no Bash, Edit, Write, web...
+    assert "--strict-mcp-config" in cmd and cmd[cmd.index("--setting-sources") + 1] == "project"
+    assert seen["files"] == ["sinyal.png"]                    # Claude's folder holds only the image
+    assert os.listdir(tmp_path) == []                         # and is removed afterwards
+
+
+def test_claude_reader_reports_errors(tmp_path):
+    import json
+    from types import SimpleNamespace as NS
+    import pytest
+    from reader.vision import ClaudeReader
+
+    def expired(cmd, cwd, **kw):
+        return NS(stdout=json.dumps({"is_error": True, "result": "OAuth session expired"}), stderr="")
+    with pytest.raises(RuntimeError, match="OAuth"):
+        ClaudeReader(workdir=str(tmp_path), run=expired).read(b"x")
+
+    def garbage(cmd, cwd, **kw):
+        return NS(stdout="not json", stderr="")
+    with pytest.raises(RuntimeError, match="JSON"):
+        ClaudeReader(workdir=str(tmp_path), run=garbage).read(b"x")

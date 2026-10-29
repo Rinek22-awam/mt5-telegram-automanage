@@ -20,7 +20,7 @@ if not exist ".env" (
     goto selesai
 )
 
-python -c "import MetaTrader5, dotenv, yaml, telethon, google.genai" >nul 2>nul
+python -c "import MetaTrader5, dotenv, yaml, telethon" >nul 2>nul
 if errorlevel 1 (
     echo Memasang paket yang dibutuhkan, tunggu sebentar...
     python -m pip install -q -r requirements.txt
@@ -30,7 +30,7 @@ if "%~1"=="" (
     echo Cara pakai: seret file gambar sinyal ke atas file .bat ini.
     goto selesai
 )
-echo Membaca %~nx1 dengan Gemini...
+echo Membaca %~nx1 dengan Claude, tunggu 10-30 detik...
 echo.
 python -m reader.main --coba-gambar "%~1"
 

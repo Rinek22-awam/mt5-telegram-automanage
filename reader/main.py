@@ -78,8 +78,8 @@ async def run(cfg: dict, find: bool):
     if not p["channel_sumber"]:
         raise SystemExit("pembaca.channel_sumber di config.yaml belum diisi "
                          "(jalankan dengan --cari-channel untuk melihat ID-nya)")
-    from .vision import GeminiReader
-    gemini = GeminiReader(_need("GEMINI_API_KEY"), p["gemini_model"])
+    from .vision import ClaudeReader
+    eye = ClaudeReader(p["claude_model"])
     await client.get_dialogs()   # fills the entity cache so numeric ids resolve
     source = await client.get_entity(_peer(p["channel_sumber"]))
     inbox = await client.get_entity(_peer(_need("TG_INBOX_CHANNEL_ID")))
@@ -109,11 +109,11 @@ async def run(cfg: dict, find: bool):
         mime = msg.file.mime_type or "image/jpeg"
         caption = msg.raw_text or ""
         try:
-            read = await asyncio.to_thread(gemini.read, image, mime)
+            read = await asyncio.to_thread(eye.read, image, mime)
             setup, why = build_setup(read, p, name, highrisk=is_highrisk(caption, p))
         except Exception as e:   # quota, network, unreadable reply
-            log.exception("gemini gagal")
-            setup, why = None, f"Gemini gagal: {e}"[:300]
+            log.exception("claude gagal")
+            setup, why = None, f"Claude gagal membaca: {e}"[:300]
         photo = io.BytesIO(image)
         photo.name = "sinyal.jpg"
         if setup:
@@ -131,14 +131,14 @@ async def run(cfg: dict, find: bool):
 
 
 def try_image(cfg: dict, path: str):
-    """Read one image file with Gemini and show the SETUP it would post. No Telegram."""
-    from .vision import GeminiReader
+    """Read one image file with Claude and show the SETUP it would post. No Telegram."""
+    from .vision import ClaudeReader
     p = cfg["pembaca"]
     with open(path, "rb") as f:
         image = f.read()
     mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
-    read = GeminiReader(_need("GEMINI_API_KEY"), p["gemini_model"]).read(image, mime)
-    print(f"Dibaca Gemini: {read}\n")
+    read = ClaudeReader(p["claude_model"]).read(image, mime)
+    print(f"Dibaca Claude: {read}\n")
     setup, why = build_setup(read, p, p["nama_sumber"])
     print(setup if setup else f"Tidak dijadikan setup: {why}")
 
@@ -153,7 +153,7 @@ def main():
     ap = argparse.ArgumentParser(description="Pembaca sinyal: channel sumber -> channel kotak masuk")
     ap.add_argument("-c", "--config", default="config.yaml")
     ap.add_argument("--cari-channel", action="store_true", help="tampilkan ID channel yang kamu ikuti")
-    ap.add_argument("--coba-gambar", metavar="FILE", help="baca satu gambar dengan Gemini, tanpa Telegram")
+    ap.add_argument("--coba-gambar", metavar="FILE", help="baca satu gambar dengan Claude, tanpa Telegram")
     a = ap.parse_args()
     if a.coba_gambar:
         try_image(load_config(a.config), a.coba_gambar)
