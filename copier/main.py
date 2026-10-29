@@ -6,6 +6,7 @@ import sys
 from dotenv import load_dotenv
 
 from .config import load_config
+from .single import BOT_PORT, claim
 from .telegram import TelegramBot
 
 log = logging.getLogger("copier")
@@ -44,6 +45,9 @@ def main():
     ap.add_argument("--cari-id", action="store_true", help="tampilkan ID channel dan ID kamu")
     a = ap.parse_args()
 
+    lock = claim(BOT_PORT)   # held until this program exits
+    if lock is None:
+        raise SystemExit("Bot sudah jalan di jendela lain. Tutup dulu jendela itu kalau mau menyalakan ulang.")
     bot = TelegramBot(_need("TG_BOT_TOKEN"))
     if a.cari_id:
         find_ids(bot)

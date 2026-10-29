@@ -173,8 +173,10 @@ def _find(monkeypatch, tmp_path, answers, forum=True):
     shutil.copy("config.yaml", cfg)
     replies = iter(answers)
     monkeypatch.setattr("builtins.input", lambda *_: next(replies))
-    asyncio.run(find_source(_FakeClient(forum), "-1002631236672", str(cfg)))
     import yaml
+    from reader.main import save_source
+    save_source(str(cfg), "-1002631236672", 78395)          # known starting point
+    asyncio.run(find_source(_FakeClient(forum), "-1002631236672", str(cfg)))
     return yaml.safe_load(cfg.read_text(encoding="utf-8"))["pembaca"]
 
 

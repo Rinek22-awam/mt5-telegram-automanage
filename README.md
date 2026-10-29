@@ -11,6 +11,28 @@ Dikembangkan dari [MT5-Automation-Labs/mt5-telegram-signal-copier](https://githu
                        └──────────────► Jurnal ◄──────────── Penjaga posisi (BE, trailing)
 ```
 
+## MENU.bat: satu pintu untuk semuanya
+
+Klik dua kali **`MENU.bat`**. Di atas menu selalu tampil: bot/pembaca sedang jalan atau mati, sumber sinyal, dan risiko.
+
+```
+1. Jalankan
+   1. Bot saja
+   2. Bot + Pembaca
+2. Utilitas
+   1. Pilih channel & topik sumber sinyal
+   2. Pengaturan SOP (risiko, pembagian TP, BE, trailing, entry, gerbang, pengaman, pembaca, simbol)
+   3. Coba baca gambar sinyal (tanpa Telegram)
+   4. Cek kesiapan (MT5, Telegram, Claude)
+   5. Riwayat setup
+   6. Cari ID Telegram (kotak masuk & ID kamu)
+   7. Tes logika program
+```
+
+- Bot dan pembaca masing-masing jalan di **jendela sendiri**; tutup jendelanya untuk mematikan.
+- Bot dan pembaca **tidak bisa jalan dobel**. Kalau dinyalakan dua kali, yang kedua langsung berhenti, supaya satu sinyal tidak dieksekusi dua kali.
+- **Pengaturan SOP** mengubah `config.yaml` langsung: nilai dicek dulu (misal risiko harus angka 0.01–20), komentar di file tetap utuh, dan config yang bikin bot gagal jalan ditolak. Perubahan berlaku setelah bot dinyalakan ulang. Mematikan "hanya demo" minta konfirmasi ketik `REAL`.
+
 ## Format setup
 
 Tulis di channel kotak masuk. Baris pertama harus berisi kata `SETUP`.
@@ -105,9 +127,9 @@ Rahasia **tidak** ditulis di `config.yaml`, tapi di `.env` (tidak ikut ke git).
    ```
 2. **Bot Telegram:** buat bot di @BotFather, tempel tokennya ke `TG_BOT_TOKEN` di `.env`. Jangan kirim token ke siapa pun.
 3. **Channel kotak masuk:** buat channel **privat**, tambahkan bot sebagai **admin**. Kirim `/start` ke bot di chat pribadi.
-4. **Cari ID:** jalankan `python -m copier.main --cari-id`, kirim satu postingan di channel, tekan Enter. Salin dua angka yang muncul ke `TG_INBOX_CHANNEL_ID` dan `TG_ADMIN_USER_ID`.
+4. **Cari ID:** `MENU.bat` → Utilitas → *Cari ID Telegram*, kirim satu postingan di channel, tekan Enter. Salin dua angka yang muncul ke `TG_INBOX_CHANNEL_ID` dan `TG_ADMIN_USER_ID`.
 5. **MT5:** buka MT5 desktop, login ke akun **demo** Exness (tipe hedging). Di Market Watch, cek nama simbol gold (misal `XAUUSDm`) dan sesuaikan bagian `simbol:` di `config.yaml`. Di MT5: Tools → Options → Expert Advisors → centang **Allow algorithmic trading**.
-6. **Jalankan:** klik dua kali **`Nyalakan Bot.bat`** (atau `python -m copier.main`). Bot jalan selama jendelanya terbuka; tutup jendela untuk mematikan. Bot mengirim "🤖 Bot nyala" ke chat pribadimu. Bot menolak jalan kalau MT5 login ke akun real (`akun.hanya_demo: true`).
+6. **Jalankan:** `MENU.bat` → Jalankan → *Bot saja*. Bot jalan di jendelanya sendiri; tutup jendela itu untuk mematikan. Bot mengirim "🤖 Bot nyala" ke chat pribadimu. Bot menolak jalan kalau MT5 login ke akun real (`akun.hanya_demo: true`).
 7. **Uji fungsi** (bukan strategi). Pakai entry dekat harga sekarang supaya cepat ke-fill:
    - Setup BUY limit di bawah harga → muncul konfirmasi → **Ya** → 3 limit order muncul di MT5 (tab Trade).
    - Setelah ke-fill dan TP1 kena: SL kaki sisa pindah ke BE.
@@ -135,9 +157,9 @@ Pembaca memposting pakai akunmu (bukan bot), karena bot Telegram tidak menerima 
 1. **API Telegram:** buka https://my.telegram.org → login → *API development tools* → buat aplikasi (nama bebas). Salin **api_id** dan **api_hash** ke `TG_API_ID` dan `TG_API_HASH` di `.env`. Ini akses ke akunmu: jangan dibagikan.
 2. **Login Claude Code:** buka PowerShell, ketik `claude auth login`, lalu login di browser dengan akun Claude Pro-mu. Cukup sekali. Cek dengan `claude auth status`.
    Claude di pembaca dikunci: hanya boleh membaca file gambar di folder sementara, tanpa MCP dan tanpa pengaturan lain. Pemakaiannya ikut kuota Pro.
-3. **Coba Claude dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
-4. **Pilih channel dan topik sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login dari Telegram; login tersimpan di `pembaca.session` (tidak ikut git, jangan dibagikan). Muncul daftar channel → ketik ID channel sinyal → muncul daftar topiknya → ketik nomor topik sinyal (atau `0` untuk semua topik). Pilihanmu langsung disimpan ke `config.yaml`; tekan Enter saja kalau cuma mau melihat.
-5. **Jalankan:** klik dua kali **`Nyalakan Pembaca.bat`**, dan **`Nyalakan Bot.bat`** di jendela lain. Dua-duanya harus menyala.
+3. **Coba Claude dulu, tanpa Telegram:** `MENU.bat` → Utilitas → *Coba baca gambar sinyal*, lalu seret gambar (misal `contoh_sinyal/01_...png`) ke jendela menu dan tekan Enter. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
+4. **Pilih channel dan topik sinyal:** `MENU.bat` → Utilitas → *Pilih channel & topik sumber sinyal*. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login dari Telegram; login tersimpan di `pembaca.session` (tidak ikut git, jangan dibagikan). Muncul daftar channel → ketik ID channel sinyal → muncul daftar topiknya → ketik nomor topik sinyal (atau `0` untuk semua topik). Pilihanmu langsung disimpan ke `config.yaml`; tekan Enter saja kalau cuma mau melihat.
+5. **Jalankan:** `MENU.bat` → Jalankan → *Bot + Pembaca*. Dua jendela terbuka, biarkan dua-duanya menyala.
 
 ## Akun cent
 
@@ -163,10 +185,12 @@ copier/broker.py        pembungkus MetaTrader5 (mode pengisian order, status kak
 copier/telegram.py      klien Bot API Telegram (tanpa paket tambahan)
 copier/app.py           alur kotak masuk -> konfirmasi -> eksekusi, perintah
 copier/main.py          titik masuk bot
+copier/single.py        pencegah bot/pembaca jalan dobel
 reader/chart.py         hasil baca Claude -> SETUP (arah, entry, simbol)
 reader/vision.py        panggilan Claude Code (claude -p) yang dikunci
 reader/updates.py       pesan teks channel -> UPDATE
 reader/main.py          pembaca: akun Telegram-mu menonton channel sinyal
+panel/                  MENU.bat: menu, pengaturan SOP, cek kesiapan
 config.yaml             semua angka SOP
 ```
 

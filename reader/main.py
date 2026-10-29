@@ -9,12 +9,12 @@ import asyncio
 import io
 import logging
 import os
-import re
 import sys
 
 from dotenv import load_dotenv
 
 from copier.config import load_config
+from copier.single import READER_PORT, claim
 
 from .chart import build_setup
 from .updates import build_update, is_highrisk
@@ -45,15 +45,20 @@ def topic_of(msg) -> int:
 
 def save_source(path: str, channel: str, topic) -> None:
     """Write pembaca.channel_sumber / topik_sumber into config.yaml, keeping its comments."""
+    from panel.yamledit import set_value
     with open(path, encoding="utf-8") as f:
         text = f.read()
-    text, n1 = re.subn(r'(?m)^(  channel_sumber:[ \t]*)("[^"\n]*"|[^\s#]+)', rf'\g<1>"{channel}"', text)
-    text, n2 = re.subn(r'(?m)^(  topik_sumber:[ \t]*)([^\s#]+)',
-                       rf'\g<1>{topic if topic else "null"}', text)
-    if not (n1 and n2):
-        raise ValueError("baris channel_sumber / topik_sumber tidak ditemukan di config.yaml")
+    text = set_value(text, ("pembaca", "channel_sumber"), str(channel))
+    text = set_value(text, ("pembaca", "topik_sumber"), int(topic) if topic else None)
     with open(path, "w", encoding="utf-8") as f:
         f.write(text)
+
+
+def _input(prompt: str) -> str:
+    try:
+        return input(prompt)
+    except EOFError:
+        return ""
 
 
 async def find_source(client, current: str, config_path: str):
@@ -65,7 +70,7 @@ async def find_source(client, current: str, config_path: str):
         if d.is_channel:
             print(f"  {d.id:>16}   {d.name}")
     print(f"\nSumber di config sekarang: {current or '(kosong)'}")
-    chosen = input("Ketik ID channel yang mau dicek (Enter = pakai yang di config): ").strip() or current
+    chosen = _input("Ketik ID channel yang mau dicek (Enter = pakai yang di config): ").strip() or current
     if not chosen:
         return
     try:
@@ -82,11 +87,11 @@ async def find_source(client, current: str, config_path: str):
         print(f"\nTopik di '{title}':\n")
         for tid, name in topics.items():
             print(f"  {tid:>8}   {name}")
-        answer = input("\nKetik nomor topik sinyal untuk disimpan ke config "
+        answer = _input("\nKetik nomor topik sinyal untuk disimpan ke config "
                        "(0 = semua topik, Enter = tidak disimpan): ").strip()
     else:
         print(f"\n'{title}' tidak memakai topik: semua pesannya akan dibaca.")
-        answer = "0" if input("Simpan sebagai sumber di config? (y/n): ").strip().lower() == "y" else ""
+        answer = "0" if _input("Simpan sebagai sumber di config? (y/n): ").strip().lower() == "y" else ""
     if not answer:
         print("Config tidak diubah.")
         return
@@ -97,7 +102,7 @@ async def find_source(client, current: str, config_path: str):
     save_source(config_path, str(chosen), topic)
     print(f"\nTersimpan: channel_sumber = {chosen}, topik_sumber = {topic or 'semua'}"
           f"{' (' + topics[topic] + ')' if topic else ''}.")
-    print("Restart pembaca (tutup jendelanya, klik dua kali Nyalakan Pembaca.bat) supaya berlaku.")
+    print("Nyalakan ulang pembaca (tutup jendelanya, lalu MENU > Jalankan) supaya berlaku.")
 
 
 async def run(cfg: dict, find: bool, config_path: str = "config.yaml"):
@@ -194,6 +199,9 @@ def main():
     if a.coba_gambar:
         try_image(load_config(a.config), a.coba_gambar)
         return
+    lock = claim(READER_PORT)   # the Telegram login file can only be used by one program
+    if lock is None:
+        raise SystemExit("Pembaca sudah jalan di jendela lain. Tutup dulu jendela pembaca itu.")
     asyncio.run(run(load_config(a.config), a.cari_channel, a.config))
 
 
