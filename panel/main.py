@@ -8,6 +8,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from copier.config import load_config
+from copier.journal import Journal, backup_path
+from copier.models import ACTIVE
 from copier.single import BOT_PORT, READER_PORT, is_running
 
 from .settings import Settings
@@ -130,6 +132,42 @@ def history(cfg):
     pause()
 
 
+def reset_journal(cfg):
+    if bot_on():
+        print("\n  Bot sedang jalan. Tutup dulu jendela bot, lalu coba lagi.")
+        pause()
+        return
+    db = os.path.join(ROOT, cfg["bot"]["jurnal"])
+    if not os.path.exists(db):
+        print("\n  Jurnal masih kosong.")
+        pause()
+        return
+    journal = Journal(db)
+    try:
+        active = journal.by_status(*ACTIVE)
+        if active:
+            print("\n  Masih ada setup aktif (limit terpasang / posisi jalan): " +
+                  ", ".join(f"#{r['id']}" for r in active))
+            print("  Kalau jurnal dihapus, bot tidak bisa menjaganya lagi (BE, trailing).")
+            print("  Tunggu selesai, atau batalkan/tutup lewat Telegram dulu, lalu coba lagi.")
+            pause()
+            return
+        total = len(journal.since(0))
+        backup = backup_path(db)
+        print(f"\n  Reset jurnal menghapus riwayat {total} setup (cek dobel ikut mulai dari nol).")
+        print(f"  Cadangan disimpan dulu ke: {backup}")
+        print("  Nomor setup berikutnya tetap lanjut. Batas loss harian tidak ikut ter-reset (dihitung dari MT5).")
+        if ask("\n  Ketik RESET untuk lanjut: ") != "RESET":
+            print("  Dibatalkan, jurnal tidak diubah.")
+            pause()
+            return
+        journal.reset(backup)
+        print(f"\n  Jurnal sudah kosong. {total} setup dihapus, cadangan aman.")
+    finally:
+        journal.db.close()
+    pause()
+
+
 def find_ids():
     if bot_on():
         print("\n  Bot sedang jalan. Tutup dulu jendela bot, lalu coba lagi.")
@@ -155,12 +193,14 @@ def tools_menu():
                        "Coba baca gambar sinyal (tanpa Telegram)",
                        "Cek kesiapan (MT5, Telegram, Claude)",
                        "Riwayat setup",
+                       "Reset jurnal trade (hapus riwayat, ada cadangan)",
                        "Cari ID Telegram (kotak masuk & ID kamu)",
                        "Tes logika program"], back="Kembali")
         if pick is None:
             return
         [pick_source, settings.run, lambda: match_screen(settings), try_image,
-         lambda: readiness(cfg), lambda: history(cfg), find_ids, run_tests][pick]()
+         lambda: readiness(cfg), lambda: history(cfg), lambda: reset_journal(cfg),
+         find_ids, run_tests][pick]()
 
 
 def main():

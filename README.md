@@ -28,8 +28,9 @@ Klik dua kali **`MENU.bat`**. Di atas menu selalu tampil: bot/pembaca sedang jal
    4. Coba baca gambar sinyal (tanpa Telegram)
    5. Cek kesiapan (MT5, Telegram, Claude)
    6. Riwayat setup
-   7. Cari ID Telegram (kotak masuk & ID kamu)
-   8. Tes logika program
+   7. Reset jurnal trade (hapus riwayat, ada cadangan)
+   8. Cari ID Telegram (kotak masuk & ID kamu)
+   9. Tes logika program
 ```
 
 - Bot dan pembaca masing-masing jalan di **jendela sendiri**; tutup jendelanya untuk mematikan.
@@ -106,8 +107,13 @@ Setelah kamu tekan **Ya**, cek harga diulang sekali lagi sebelum order dikirim.
 | `/status` | Saldo, setup aktif, TP yang sudah kena |
 | `/stop` | Tolak setup baru + batalkan semua limit. Posisi yang jalan tetap dijaga |
 | `/lanjut` | Terima setup lagi |
+| `/limit` | Daftar limit yang menunggu: nomor, pair, arah, entry, SL, jam habis. Ada tombol batal per setup |
 | `/batal 12` | Batalkan limit setup #12 yang belum ke-fill |
+| `/hapuslimit` | Hapus semua limit yang belum ke-fill, tanpa mode stop. Posisi yang jalan tidak disentuh (ada tombol konfirmasi) |
 | `/tutupsemua` | Tutup semua posisi dan limit bot (ada tombol konfirmasi) |
+| `/resetjurnal` | Hapus riwayat setup (ada tombol konfirmasi). Hanya bisa kalau tidak ada setup aktif |
+
+**Reset jurnal** (lewat `/resetjurnal` atau `MENU.bat` → Utilitas → *Reset jurnal trade*): riwayat setup dihapus, jadi cek dobel mulai dari nol. Jurnal lama disalin dulu ke `data/jurnal-cadangan-<tanggal>.db`. Mode stop dan nomor setup tetap lanjut (tombol Telegram lama tidak bisa mengenai setup baru). Batas loss harian tidak ikut ter-reset karena dihitung dari MT5. Ditolak kalau masih ada limit terpasang atau posisi jalan; dari menu juga ditolak kalau bot sedang jalan (pakai `/resetjurnal`).
 
 ## Pengaturan
 

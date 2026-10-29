@@ -85,3 +85,28 @@ def test_fmt_quotes_what_yaml_would_misread():
 def test_set_value_unknown_key():
     with pytest.raises(KeyError):
         set_value("a:\n  b: 1\n", ("a", "c"), 2)
+
+
+def test_reset_journal_menu(monkeypatch, tmp_path):
+    from copier.journal import Journal
+    from copier.models import Setup
+    from panel import main
+    db = tmp_path / "jurnal.db"
+    j = Journal(str(db))
+    sid = j.add_setup(Setup("XAUUSD", "BUY", 3990, 3980, [4000]), "running")
+    j.db.close()
+    cfg = {"bot": {"jurnal": str(db)}}
+    answers = iter(["salah", "RESET"])
+    monkeypatch.setattr(main, "ask", lambda _: next(answers))
+    monkeypatch.setattr(main, "pause", lambda: None)
+    monkeypatch.setattr(main, "bot_on", lambda: False)
+
+    main.reset_journal(cfg)                              # active setup: refused before asking
+    assert len(Journal(str(db)).since(0)) == 1
+    j = Journal(str(db))
+    j.update(sid, status="done")
+    j.db.close()
+    main.reset_journal(cfg)                              # wrong word: unchanged
+    assert len(Journal(str(db)).since(0)) == 1 and not list(tmp_path.glob("jurnal-cadangan-*"))
+    main.reset_journal(cfg)
+    assert not Journal(str(db)).since(0) and len(list(tmp_path.glob("jurnal-cadangan-*"))) == 1

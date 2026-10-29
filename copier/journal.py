@@ -37,6 +37,7 @@ class Journal:
     def __init__(self, path: str = "data/jurnal.db", clock=time.time):
         if path != ":memory:":
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        self.path = path
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(_SCHEMA)
@@ -75,6 +76,17 @@ class Journal:
     def since(self, t: float) -> List[dict]:
         return [_row(r) for r in self.db.execute(
             "SELECT * FROM setups WHERE created >= ? ORDER BY id", (t,))]
+
+    def reset(self, backup_to: str) -> int:
+        """Copy the journal to `backup_to`, then forget all setups, legs and events.
+        Bot state (stop mode, Telegram offset) is kept, and numbering carries on
+        so old Telegram buttons cannot hit a new setup. Returns how many setups were removed."""
+        dest = sqlite3.connect(backup_to)
+        self.db.backup(dest)
+        dest.close()
+        n = self.db.execute("SELECT COUNT(*) FROM setups").fetchone()[0]
+        self.db.executescript("DELETE FROM setups; DELETE FROM legs; DELETE FROM events;")
+        return n
 
     def message_seen(self, chat: int, msg_id: int) -> bool:
         return self.db.execute("SELECT 1 FROM setups WHERE msg_chat = ? AND msg_id = ?",
@@ -116,6 +128,11 @@ class Journal:
         self.db.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)",
                         (key, json.dumps(value)))
         self.db.commit()
+
+
+def backup_path(db_path: str) -> str:
+    """Where a reset keeps the old journal, e.g. data/jurnal-cadangan-20261029-213000.db."""
+    return os.path.join(os.path.dirname(db_path), f"jurnal-cadangan-{time.strftime('%Y%m%d-%H%M%S')}.db")
 
 
 def _row(r) -> Optional[dict]:

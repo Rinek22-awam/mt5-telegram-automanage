@@ -328,6 +328,59 @@ def test_close_all_needs_confirmation():
     assert not mt5.positions
 
 
+def test_limit_list_shows_entry_sl_and_cancels_by_button():
+    app, mt5, bot, _ = make()
+    command(app, "/limit")
+    assert "Tidak ada limit" in bot.last
+    confirmed(app)
+    confirmed(app, SETUP.replace("Entry: 3990", "Entry: 3985").replace("SL: 3980", "SL: 3975"))
+    command(app, "/limit")
+    assert "#1 XAUUSDm BUY @ 3990.0 · SL 3980.0 · habis" in bot.last
+    assert "#2 XAUUSDm BUY @ 3985.0 · SL 3975.0 · habis" in bot.last
+    assert bot.sent[-1]["buttons"] == [[("🚫 Batalkan #1", "batal:1")], [("🚫 Batalkan #2", "batal:2")]]
+    press(app, "batal:1")
+    assert "3 limit setup #1 dibatalkan" in bot.edits[-1]["text"] and len(mt5.orders) == 3
+    app.tick()
+    command(app, "/limit")
+    assert "#1" not in bot.last and "#2" in bot.last
+
+
+def test_delete_all_limits_needs_confirmation_and_keeps_positions():
+    app, mt5, bot, _ = make()
+    command(app, "/hapuslimit")
+    assert "Tidak ada limit" in bot.last
+    confirmed(app, SETUP.replace("Entry: 3990\n", "Order: MARKET\n"))     # a running trade
+    confirmed(app, SETUP.replace("Entry: 3990", "Entry: 3985"))          # three limits
+    command(app, "/hapuslimit")
+    assert "#2" in bot.last and "#1" not in bot.last and len(mt5.orders) == 3
+    press(app, "hapuslimit:tidak")
+    assert len(mt5.orders) == 3
+    command(app, "/hapuslimit")
+    press(app, "hapuslimit:ya")
+    assert not mt5.orders and len(mt5.positions) == 3
+    assert "3 limit dihapus" in bot.edits[-1]["text"]
+    assert not app.journal.get_kv("paused", False)                       # unlike /stop
+
+
+def test_reset_journal_from_telegram(tmp_path):
+    db = tmp_path / "jurnal.db"
+    app, mt5, bot, _ = make(journal=Journal(str(db)), mt5=FakeMT5(bid=3988.0))
+    confirmed(app)                                                       # running, so reset is refused
+    command(app, "/resetjurnal")
+    assert "Belum bisa reset" in bot.last and not bot.sent[-1]["buttons"]
+    command(app, "/tutupsemua")
+    press(app, "tutupsemua:ya")
+    app.tick()
+    command(app, "/resetjurnal")
+    assert bot.sent[-1]["buttons"]
+    press(app, "resetjurnal:ya")
+    assert "1 setup dihapus" in bot.edits[-1]["text"] and not app.journal.since(0)
+    backups = list(tmp_path.glob("jurnal-cadangan-*.db"))
+    assert len(backups) == 1 and len(Journal(str(backups[0])).since(0)) == 1
+    post(app)
+    assert app.journal.by_status("awaiting_confirm")[-1]["id"] == 2    # numbering carries on
+
+
 def test_status_command():
     app, _, bot, _ = make()
     confirmed(app)

@@ -4,5 +4,6 @@ __pycache__/
 *.pyc
 logs/
 *.session
+*.session-journal
 .pytest_cache/
 data/

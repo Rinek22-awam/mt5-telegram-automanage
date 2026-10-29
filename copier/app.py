@@ -1,12 +1,14 @@
 """Wires the inbox channel, gate, executor and guard together."""
 import logging
+import os
 import time
 from datetime import datetime
 
 from .executor import Executor
 from .gate import Gate
 from .guard import Guard
-from .models import ACTIVE, AWAITING, DECLINED, EXPIRED, REJECTED, Setup
+from .journal import backup_path
+from .models import ACTIVE, AWAITING, DECLINED, EXPIRED, LEG_PENDING, REJECTED, RUNNING, Setup
 from .setup_format import parse_setup, parse_update
 
 log = logging.getLogger("copier")
@@ -15,8 +17,11 @@ HELP = ("Perintah:\n"
         "/status  setup aktif, loss hari ini\n"
         "/stop  hentikan setup baru + batalkan semua limit\n"
         "/lanjut  terima setup baru lagi\n"
+        "/limit  daftar limit yang menunggu, dengan tombol batal\n"
         "/batal 12  batalkan limit setup #12 yang belum ke-fill\n"
-        "/tutupsemua  tutup SEMUA posisi bot (ada konfirmasi)")
+        "/hapuslimit  hapus SEMUA limit yang belum ke-fill (ada konfirmasi)\n"
+        "/tutupsemua  tutup SEMUA posisi bot (ada konfirmasi)\n"
+        "/resetjurnal  hapus riwayat setup, ada cadangan (ada konfirmasi)")
 
 
 def setup_from_row(r: dict) -> Setup:
@@ -260,6 +265,19 @@ class App:
                 text = f"🧯 {n} order/posisi ditutup atau dibatalkan."
             self._reply(msg_id, text)
             return
+        if action == "hapuslimit":
+            text = "Dibatalkan, limit tetap terpasang."
+            if arg == "ya":
+                n = self.guard.cancel_pending()
+                text = f"🚫 {n} limit dihapus. Posisi yang sudah jalan tetap dijaga."
+            self._reply(msg_id, text)
+            return
+        if action == "resetjurnal":
+            text = "Dibatalkan, jurnal tidak diubah."
+            if arg == "ya":
+                text = self._reset_journal()
+            self._reply(msg_id, text)
+            return
         if action == "abaikan":
             self._reply(msg_id, "Diabaikan. SOP bot tetap berjalan.")
             return
@@ -301,11 +319,70 @@ class App:
         elif cmd == "/batal" and len(parts) > 1 and parts[1].lstrip("#").isdigit():
             n = self.guard.cancel_pending(int(parts[1].lstrip("#")))
             self.notify(f"{n} limit setup #{parts[1].lstrip('#')} dibatalkan.")
+        elif cmd == "/limit":
+            self._list_limits()
+        elif cmd == "/hapuslimit":
+            ids = [r["id"] for r in self._with_limits()]
+            if not ids:
+                self.notify("Tidak ada limit yang terpasang.")
+            else:
+                self.notify("Yakin hapus semua limit yang belum ke-fill? Setup: " +
+                            ", ".join(f"#{i}" for i in ids) + ". Posisi yang sudah jalan tidak disentuh.",
+                            buttons=[[("🚫 Ya, hapus limit", "hapuslimit:ya"), ("Batal", "hapuslimit:tidak")]])
         elif cmd == "/tutupsemua":
             self.notify("Yakin tutup SEMUA posisi dan limit bot di harga pasar?",
                         buttons=[[("🧯 Ya, tutup semua", "tutupsemua:ya"), ("Batal", "tutupsemua:tidak")]])
+        elif cmd == "/resetjurnal":
+            busy = self._reset_blocked()
+            if busy:
+                self.notify(busy)
+            else:
+                self.notify(f"Yakin reset jurnal? Riwayat {len(self.journal.since(0))} setup dihapus "
+                            f"(cek dobel ikut mulai dari nol), cadangan disimpan di folder data. "
+                            f"Batas loss harian tidak ikut ter-reset (dihitung dari MT5).",
+                            buttons=[[("🗑 Ya, reset", "resetjurnal:ya"), ("Batal", "resetjurnal:tidak")]])
         else:
             self.notify(HELP)
+
+    def _with_limits(self):
+        """Active setups that still have an unfilled order."""
+        return [r for r in self.journal.by_status(*ACTIVE)
+                if any(l["status"] == LEG_PENDING for l in self.journal.legs(r["id"]))]
+
+    def _list_limits(self):
+        rows = self._with_limits()
+        if not rows:
+            self.notify("Tidak ada limit yang terpasang.")
+            return
+        lines = ["📋 Limit yang menunggu:"]
+        for r in rows:
+            if r["status"] == RUNNING:
+                when = "sebagian jalan"
+            elif r["expires"]:
+                end = datetime.fromtimestamp(r["expires"])
+                when = "habis " + end.strftime("%H:%M" if end.date() == datetime.now().date() else "%d/%m %H:%M")
+            else:
+                when = ""
+            lines.append(f"#{r['id']} {r['broker_symbol']} {r['side']} @ {r['entry']} · SL {r['sl']}"
+                         + (f" · {when}" if when else ""))
+        self.notify("\n".join(lines), buttons=[[(f"🚫 Batalkan #{r['id']}", f"batal:{r['id']}")] for r in rows])
+
+    def _reset_blocked(self) -> str:
+        """Why the journal cannot be reset now, or "" if it can."""
+        active = self.journal.by_status(*ACTIVE)
+        if not active:
+            return ""
+        return ("Belum bisa reset: masih ada setup aktif " + ", ".join(f"#{r['id']}" for r in active) +
+                ". Tanpa jurnal, bot tidak bisa menjaganya (BE, trailing). "
+                "Tunggu selesai, atau /hapuslimit / /tutupsemua dulu.")
+
+    def _reset_journal(self) -> str:
+        busy = self._reset_blocked()   # checked again: something may have been placed since the question
+        if busy:
+            return busy
+        backup = backup_path(self.journal.path)
+        n = self.journal.reset(backup)
+        return f"🗑 Jurnal di-reset, {n} setup dihapus. Cadangan: {os.path.basename(backup)}"
 
     def _status(self) -> str:
         acc = self.broker.account()
