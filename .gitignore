@@ -7,3 +7,11 @@ logs/
 *.session-journal
 .pytest_cache/
 data/
+.desktop-deps/
+.build-deps/
+build/
+dist/
+*.spec
+build-desktop.log
+TradingManager.exe
+_internal/
