@@ -135,7 +135,7 @@ Pembaca memposting pakai akunmu (bukan bot), karena bot Telegram tidak menerima 
 1. **API Telegram:** buka https://my.telegram.org → login → *API development tools* → buat aplikasi (nama bebas). Salin **api_id** dan **api_hash** ke `TG_API_ID` dan `TG_API_HASH` di `.env`. Ini akses ke akunmu: jangan dibagikan.
 2. **API key Gemini:** buka https://aistudio.google.com → *Get API key* → buat key, salin ke `GEMINI_API_KEY` di `.env`.
 3. **Coba Gemini dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
-4. **Cari ID channel sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login yang dikirim Telegram. Login tersimpan di file `pembaca.session` (tidak ikut git, jangan dibagikan). Salin ID channel sinyal ke `pembaca.channel_sumber` di `config.yaml`.
+4. **Cari ID channel sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login yang dikirim Telegram. Login tersimpan di file `pembaca.session` (tidak ikut git, jangan dibagikan). Salin ID channel sinyal ke `pembaca.channel_sumber` di `config.yaml`. Kalau grupnya **bertopik** dan sinyal hanya di satu topik, jalankan sekali lagi: di bawah daftar channel muncul daftar topik. Salin nomor topik sinyal ke `pembaca.topik_sumber`; pesan dari topik lain diabaikan.
 5. **Jalankan:** klik dua kali **`Nyalakan Pembaca.bat`**, dan **`Nyalakan Bot.bat`** di jendela lain. Dua-duanya harus menyala.
 
 ## Akun cent

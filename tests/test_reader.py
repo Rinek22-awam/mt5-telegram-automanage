@@ -81,3 +81,13 @@ def test_ambiguous_thousands_resolved_by_price_range():
     # Indonesian style gold stays as it was
     s, _ = parse_setup(build_setup(OUTLOOK_01, P, "x")[0])
     assert s.entry == 3987.26
+
+
+def test_topic_of_forum_messages():
+    from types import SimpleNamespace as NS
+    from reader.main import topic_of
+    assert topic_of(NS(reply_to=None)) == 1                                   # General topic
+    assert topic_of(NS(reply_to=NS(forum_topic=True, reply_to_top_id=None, reply_to_msg_id=42))) == 42
+    # a reply inside topic 42 points at the replied message; the topic is reply_to_top_id
+    assert topic_of(NS(reply_to=NS(forum_topic=True, reply_to_top_id=42, reply_to_msg_id=977))) == 42
+    assert topic_of(NS(reply_to=NS(forum_topic=False, reply_to_top_id=None, reply_to_msg_id=5))) == 1

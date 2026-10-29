@@ -62,7 +62,8 @@ bot:
   jurnal: data/jurnal.db
 
 pembaca:                      # program kedua: channel sinyal -> channel kotak masuk
-  channel_sumber: ""          # ID channel sinyal (cari dengan "Cari Channel Sumber.bat")
+  channel_sumber: "-1002631236672"   # ID channel sinyal (cari dengan "Cari Channel Sumber.bat")
+  topik_sumber: null          # grup bertopik: nomor topik sinyal (lihat "Cari Channel Sumber.bat"); null = semua
   nama_sumber: outlook        # nama yang ditulis di baris "Sumber:" dan di jurnal
   gemini_model: gemini-flash-latest   # model Gemini pembaca gambar (cek yang gratis di AI Studio)
   simbol_dari_harga:          # gambar tanpa nama simbol: ditebak dari besar harganya

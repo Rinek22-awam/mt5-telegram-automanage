@@ -26,7 +26,8 @@ if errorlevel 1 (
     python -m pip install -q -r requirements.txt
 )
 
-echo Menampilkan semua channel yang kamu ikuti beserta ID-nya.
+echo Menampilkan semua channel yang kamu ikuti beserta ID-nya,
+echo lalu daftar topik di channel sumber (kalau grupnya bertopik).
 echo Pertama kali: masukkan nomor HP Telegram (format +62...) dan kode login dari Telegram.
 echo.
 python -m reader.main --cari-channel

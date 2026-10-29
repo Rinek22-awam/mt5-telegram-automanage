@@ -34,11 +34,34 @@ def _peer(value):
     return int(s) if s.lstrip("-").isdigit() else s
 
 
-async def list_channels(client):
+def topic_of(msg) -> int:
+    """Forum topic a message belongs to. Messages in the General topic carry no topic: 1."""
+    rt = getattr(msg, "reply_to", None)
+    if rt is not None and getattr(rt, "forum_topic", False):
+        return rt.reply_to_top_id or rt.reply_to_msg_id
+    return 1
+
+
+async def list_channels(client, source_id):
+    from telethon import functions
+
     print("Channel yang kamu ikuti (salin ID-nya ke pembaca.channel_sumber di config.yaml):\n")
     async for d in client.iter_dialogs():
         if d.is_channel:
             print(f"  {d.id:>16}   {d.name}")
+    if not source_id:
+        return
+    source = await client.get_entity(_peer(source_id))
+    print(f"\nTopik di '{getattr(source, 'title', source_id)}' "
+          f"(salin nomornya ke pembaca.topik_sumber di config.yaml):\n")
+    if not getattr(source, "forum", False):
+        print("  Grup/channel ini tidak memakai topik. Biarkan topik_sumber kosong.")
+        return
+    res = await client(functions.messages.GetForumTopicsRequest(
+        peer=source, offset_date=None, offset_id=0, offset_topic=0, limit=100))
+    for t in res.topics:
+        if getattr(t, "title", None):
+            print(f"  {t.id:>8}   {t.title}")
 
 
 async def run(cfg: dict, find: bool):
@@ -48,7 +71,8 @@ async def run(cfg: dict, find: bool):
     client = TelegramClient("pembaca", int(_need("TG_API_ID")), _need("TG_API_HASH"))
     await client.start()   # first run asks for phone number and login code in this window
     if find:
-        await list_channels(client)
+        await client.get_dialogs()
+        await list_channels(client, p["channel_sumber"])
         return
 
     if not p["channel_sumber"]:
@@ -60,10 +84,13 @@ async def run(cfg: dict, find: bool):
     source = await client.get_entity(_peer(p["channel_sumber"]))
     inbox = await client.get_entity(_peer(_need("TG_INBOX_CHANNEL_ID")))
     name = p["nama_sumber"]
+    topic = int(p["topik_sumber"]) if p.get("topik_sumber") else None
 
     @client.on(events.NewMessage(chats=source))
     async def on_message(event):
         msg = event.message
+        if topic and topic_of(msg) != topic:
+            return   # another topic of the same group: not signals
         try:
             if msg.photo or (msg.document and (msg.file.mime_type or "").startswith("image/")):
                 await on_image(msg)
@@ -98,8 +125,8 @@ async def run(cfg: dict, find: bool):
                                                          f"Teks: Gambar tidak dijadikan setup ({why}).{note}")
             log.info("gambar dilewati: %s", why)
 
-    log.info("Pembaca jalan, menonton %s. Tutup jendela untuk berhenti.",
-             getattr(source, "title", p["channel_sumber"]))
+    log.info("Pembaca jalan, menonton %s%s. Tutup jendela untuk berhenti.",
+             getattr(source, "title", p["channel_sumber"]), f" topik {topic}" if topic else "")
     await client.run_until_disconnected()
 
 
