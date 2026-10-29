@@ -37,7 +37,19 @@ Sumber: outlook_gold
 | `Order` | tidak | `LIMIT` (default), `STOP`, atau `MARKET` |
 | `Risk` | tidak | Menimpa risiko di config untuk setup ini saja: `0.5%` atau `$20` |
 | `Entry2`, `SL2` | tidak | Dicatat di jurnal, tidak dipakai (SOP: entry pertama, SL1) |
+| `Highrisk` | tidak | `ya` = diberi tanda ⚠️ HIGHRISK di konfirmasi dan selalu ditanya. Risiko tetap normal |
 | `Sumber`, `Catatan` | tidak | Untuk jurnal dan evaluasi channel |
+
+### Update dari sumber
+
+```
+UPDATE
+Sumber: outlook
+Aksi: CANCEL
+Teks: cancel setup gold
+```
+
+`Aksi: INFO` diteruskan ke chat pribadimu. `CANCEL` / `CLOSE` muncul dengan tombol (batalkan limit / tutup posisi) untuk setup terakhir dari sumber yang sama. **Bot tidak bertindak sebelum tombol ditekan**; SOP bot (BE, trailing) tetap jalan.
 
 Angka boleh format biasa (`3987.26`) atau Indonesia (`3.987,26`). Postingan tanpa kata `SETUP` di baris pertama diabaikan. Postingan `SETUP` yang salah format dilaporkan ke chat pribadimu, tidak dieksekusi.
 
@@ -105,6 +117,31 @@ Rahasia **tidak** ditulis di `config.yaml`, tapi di `.env` (tidak ikut ke git).
    - Matikan bot (Ctrl+C) saat ada posisi jalan, nyalakan lagi → posisi tetap dijaga.
    - Ganti `risiko.mode` ke `dolar`, restart → lot di konfirmasi berubah sesuai nominal.
 
+## Pembaca sinyal (program kedua)
+
+Menonton **channel sinyal** pakai akun Telegram-mu, membaca gambar sinyal dengan **Gemini**, lalu memposting `SETUP` (beserta gambar aslinya) ke channel kotak masuk. Pesan teks dari channel sinyal diposting sebagai `UPDATE`. Pembaca **tidak pernah trading**; semua tetap lewat gerbang dan konfirmasi bot.
+
+Gemini hanya menyalin label angka dan warna garis (merah = SL, biru = entry, hitam = TP). Yang menentukan arah, entry, dan simbol adalah kode biasa:
+- **Arah:** SL di bawah entry = BUY, di atas = SELL.
+- **Dua entry:** dipakai yang paling dekat ke TP (yang ke-fill duluan); yang lain dicatat sebagai `Entry2`.
+- **Simbol:** dari nama di gambar kalau ada, kalau tidak dari besar harga (`simbol_dari_harga` di config: 1.000–10.000 = gold, di atas 10.000 = BTC).
+- **Highrisk:** kata seperti "high risk" di caption gambar → baris `Highrisk: ya`.
+- Gambar yang tidak terbaca atau bukan sinyal tetap diposting sebagai `UPDATE` INFO beserta alasannya, jadi kamu tahu.
+
+Pembaca memposting pakai akunmu (bukan bot), karena bot Telegram tidak menerima postingannya sendiri. Akunmu harus admin di channel kotak masuk.
+
+### Pasang pembaca
+
+1. **API Telegram:** buka https://my.telegram.org → login → *API development tools* → buat aplikasi (nama bebas). Salin **api_id** dan **api_hash** ke `TG_API_ID` dan `TG_API_HASH` di `.env`. Ini akses ke akunmu: jangan dibagikan.
+2. **API key Gemini:** buka https://aistudio.google.com → *Get API key* → buat key, salin ke `GEMINI_API_KEY` di `.env`.
+3. **Coba Gemini dulu, tanpa Telegram:** seret gambar sinyal (misal `contoh_sinyal/01_...png`) ke atas **`Coba Baca Gambar.bat`**. Hasilnya harus `SETUP` dengan angka yang sama dengan gambar.
+4. **Cari ID channel sinyal:** klik dua kali **`Cari Channel Sumber.bat`**. Pertama kali kamu diminta nomor HP (format `+62...`) dan kode login yang dikirim Telegram. Login tersimpan di file `pembaca.session` (tidak ikut git, jangan dibagikan). Salin ID channel sinyal ke `pembaca.channel_sumber` di `config.yaml`.
+5. **Jalankan:** klik dua kali **`Nyalakan Pembaca.bat`**, dan **`Nyalakan Bot.bat`** di jendela lain. Dua-duanya harus menyala.
+
+## Akun cent
+
+Bot mengenali akun cent Exness (mata uang **USC**). Nilai dolar di `config.yaml` dan baris `Risk: $20` otomatis dikali 100 (= 2000 USC). Mode persen tidak berubah. Ganti nama simbol di bagian `simbol:` ke versi cent (misal `XAUUSDc`, `BTCUSDc`; cek di Market Watch) dan `akun.hanya_demo: false`, karena Exness tidak punya demo cent.
+
 ## Tes logika (tanpa MT5 dan Telegram)
 
 ```
@@ -124,7 +161,11 @@ copier/journal.py       jurnal SQLite
 copier/broker.py        pembungkus MetaTrader5 (mode pengisian order, status kaki)
 copier/telegram.py      klien Bot API Telegram (tanpa paket tambahan)
 copier/app.py           alur kotak masuk -> konfirmasi -> eksekusi, perintah
-copier/main.py          titik masuk
+copier/main.py          titik masuk bot
+reader/chart.py         hasil baca Gemini -> SETUP (arah, entry, simbol)
+reader/vision.py        panggilan Gemini
+reader/updates.py       pesan teks channel -> UPDATE
+reader/main.py          pembaca: akun Telegram-mu menonton channel sinyal
 config.yaml             semua angka SOP
 ```
 

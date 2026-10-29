@@ -60,3 +60,16 @@ mt5:
 bot:
   interval_detik: 2           # seberapa sering posisi dicek
   jurnal: data/jurnal.db
+
+pembaca:                      # program kedua: channel sinyal -> channel kotak masuk
+  channel_sumber: ""          # ID channel sinyal (cari dengan "Cari Channel Sumber.bat")
+  nama_sumber: outlook        # nama yang ditulis di baris "Sumber:" dan di jurnal
+  gemini_model: gemini-flash-latest   # model Gemini pembaca gambar (cek yang gratis di AI Studio)
+  simbol_dari_harga:          # gambar tanpa nama simbol: ditebak dari besar harganya
+    - {simbol: XAUUSD, min: 1000, max: 10000, alias: [GOLD, XAU]}
+    - {simbol: BTCUSD, min: 10000, max: 1000000, alias: [BTC, BTCUSDT]}
+  # Pesan teks dari channel diteruskan sebagai info. Kata-kata di bawah membuat bot
+  # menawarkan tombol (batalkan limit / tutup posisi). Bot tidak bertindak sendiri.
+  kata_cancel: [cancel, canceled, cancelled, batal, dibatalkan]
+  kata_close: [close, close now, tutup, exit, cut]
+  kata_highrisk: [high risk, highrisk, hi risk, risiko tinggi, resiko tinggi]

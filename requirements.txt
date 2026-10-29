@@ -2,3 +2,5 @@ MetaTrader5>=5.0.45 ; platform_system == "Windows"
 python-dotenv>=1.0
 PyYAML>=6.0
 pytest>=8.0
+telethon>=1.40
+google-genai>=1.0

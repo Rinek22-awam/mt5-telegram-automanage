@@ -19,6 +19,15 @@ DEFAULTS = {
     "simbol": {},
     "mt5": {"magic": 260101, "deviasi_poin": 20},
     "bot": {"interval_detik": 2, "jurnal": "data/jurnal.db"},
+    "pembaca": {
+        "channel_sumber": "", "nama_sumber": "sumber", "gemini_model": "gemini-flash-latest",
+        "simbol_dari_harga": [
+            {"simbol": "XAUUSD", "min": 1000, "max": 10000, "alias": ["GOLD", "XAU"]},
+            {"simbol": "BTCUSD", "min": 10000, "max": 1000000, "alias": ["BTC", "BTCUSDT"]}],
+        "kata_highrisk": ["high risk", "highrisk", "hi risk", "risiko tinggi", "resiko tinggi"],
+        "kata_cancel": ["cancel", "canceled", "cancelled", "batal", "dibatalkan"],
+        "kata_close": ["close", "close now", "tutup", "exit", "cut"],
+    },
 }
 
 
