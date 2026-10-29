@@ -40,7 +40,7 @@ Klik dua kali **`MENU.bat`**. Di atas menu selalu tampil: bot/pembaca sedang jal
 
 ## Format setup
 
-Tulis di channel kotak masuk. Baris pertama harus berisi kata `SETUP`.
+Tulis di channel kotak masuk. Baris pertama harus berisi kata `SETUP`. Format kosong siap salin dan contoh lengkap: [FORMAT_SETUP.md](FORMAT_SETUP.md).
 
 ```
 SETUP
