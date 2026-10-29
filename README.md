@@ -95,7 +95,7 @@ Rahasia **tidak** ditulis di `config.yaml`, tapi di `.env` (tidak ikut ke git).
 3. **Channel kotak masuk:** buat channel **privat**, tambahkan bot sebagai **admin**. Kirim `/start` ke bot di chat pribadi.
 4. **Cari ID:** jalankan `python -m copier.main --cari-id`, kirim satu postingan di channel, tekan Enter. Salin dua angka yang muncul ke `TG_INBOX_CHANNEL_ID` dan `TG_ADMIN_USER_ID`.
 5. **MT5:** buka MT5 desktop, login ke akun **demo** Exness (tipe hedging). Di Market Watch, cek nama simbol gold (misal `XAUUSDm`) dan sesuaikan bagian `simbol:` di `config.yaml`. Di MT5: Tools → Options → Expert Advisors → centang **Allow algorithmic trading**.
-6. **Jalankan:** `python -m copier.main`. Bot mengirim "🤖 Bot nyala" ke chat pribadimu. Bot menolak jalan kalau MT5 login ke akun real (`akun.hanya_demo: true`).
+6. **Jalankan:** klik dua kali **`Nyalakan Bot.bat`** (atau `python -m copier.main`). Bot jalan selama jendelanya terbuka; tutup jendela untuk mematikan. Bot mengirim "🤖 Bot nyala" ke chat pribadimu. Bot menolak jalan kalau MT5 login ke akun real (`akun.hanya_demo: true`).
 7. **Uji fungsi** (bukan strategi). Pakai entry dekat harga sekarang supaya cepat ke-fill:
    - Setup BUY limit di bawah harga → muncul konfirmasi → **Ya** → 3 limit order muncul di MT5 (tab Trade).
    - Setelah ke-fill dan TP1 kena: SL kaki sisa pindah ke BE.
