@@ -8,16 +8,16 @@ log = logging.getLogger(__name__)
 
 
 class TelegramBot:
-    def __init__(self, token: str, timeout: float = 30):
+    def __init__(self, token: str, timeout: float = 15):
         self.base = f"https://api.telegram.org/bot{token}/"
         self.timeout = timeout
 
-    def call(self, method: str, **params):
+    def call(self, method: str, http_timeout: float = None, **params):
         data = json.dumps({k: v for k, v in params.items() if v is not None}).encode()
         req = urllib.request.Request(self.base + method, data=data,
                                      headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            with urllib.request.urlopen(req, timeout=http_timeout or self.timeout) as r:
                 body = json.load(r)
         except urllib.error.HTTPError as e:
             body = json.loads(e.read() or b"{}")
@@ -26,7 +26,8 @@ class TelegramBot:
         return body["result"]
 
     def get_updates(self, offset: int, wait: int = 1):
-        return self.call("getUpdates", offset=offset, timeout=wait,
+        # a stuck request must not hold up the position guard for long
+        return self.call("getUpdates", http_timeout=wait + 9, offset=offset, timeout=wait,
                          allowed_updates=["channel_post", "message", "callback_query"])
 
     def send(self, chat_id, text: str, buttons=None, reply_to=None):

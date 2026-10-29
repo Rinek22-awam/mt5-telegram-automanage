@@ -315,3 +315,17 @@ def test_status_command():
     confirmed(app)
     command(app, "/status")
     assert "#1 XAUUSDm BUY pending" in bot.last
+
+
+def test_late_button_tap_still_executes():
+    # Telegram refuses to acknowledge a tap that arrived late; the order must still go in
+    app, mt5, bot, _ = make()
+    post(app)
+
+    def too_old(*a, **k):
+        raise RuntimeError("Telegram answerCallbackQuery: Bad Request: query is too old")
+    bot.answer = too_old
+    bot.edit = too_old
+    press(app, "ya:1")
+    assert len(mt5.orders) == 3 and app.journal.get(1)["status"] == "pending"
+    assert "LIMIT terpasang" in bot.last          # result sent as a new message instead

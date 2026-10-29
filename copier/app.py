@@ -77,6 +77,8 @@ class App:
                 for u in self.bot.get_updates(offset, wait=1):
                     self.journal.set_kv("tg_offset", u["update_id"] + 1)
                     self.handle_update(u)
+            except OSError as e:   # timeouts and dropped connections: just try again
+                log.warning("Telegram lambat/putus, dicoba lagi: %s", e)
             except Exception:
                 log.exception("telegram polling failed")
             try:
@@ -190,6 +192,14 @@ class App:
                 log.exception("edit failed")
         self.notify(text)
 
+    def _reply(self, msg_id, text):
+        """Replace the button message with the result; send a new message if that fails."""
+        try:
+            self.bot.edit(self.admin, msg_id, text)
+        except Exception:
+            log.warning("edit failed, sending a new message", exc_info=True)
+            self.notify(text)
+
     def _watch_daily_loss(self):
         if not self.journal.by_status(*ACTIVE):
             return
@@ -205,26 +215,29 @@ class App:
             return
         data = q.get("data", "")
         action, _, arg = data.partition(":")
-        self.bot.answer(q["id"])
+        try:
+            self.bot.answer(q["id"])   # only stops the button spinner; may fail if the tap arrived late
+        except Exception:
+            log.warning("answerCallbackQuery failed, continuing", exc_info=True)
         msg_id = q.get("message", {}).get("message_id")
         if action == "tutupsemua":
             text = "Dibatalkan, tidak ada yang ditutup."
             if arg == "ya":
                 n = self.guard.close_all()
                 text = f"🧯 {n} order/posisi ditutup atau dibatalkan."
-            self.bot.edit(self.admin, msg_id, text)
+            self._reply(msg_id, text)
             return
         if action not in ("ya", "tidak") or not arg.isdigit():
             return
         row = self.journal.get(int(arg))
         if row is None or row["status"] != AWAITING:
-            self.bot.edit(self.admin, msg_id, f"Setup #{arg} sudah tidak menunggu konfirmasi.")
+            self._reply(msg_id, f"Setup #{arg} sudah tidak menunggu konfirmasi.")
             return
         if action == "tidak":
             self.journal.update(row["id"], status=DECLINED, reason="Ditolak user")
-            self.bot.edit(self.admin, msg_id, f"❌ Setup #{arg} kamu tolak.")
+            self._reply(msg_id, f"❌ Setup #{arg} kamu tolak.")
             return
-        self.bot.edit(self.admin, msg_id, self._execute(row["id"]))
+        self._reply(msg_id, self._execute(row["id"]))
 
     def on_message(self, msg: dict):
         if msg.get("from", {}).get("id") != self.admin or msg["chat"]["id"] != self.admin:
