@@ -11,6 +11,7 @@ from copier.config import load_config
 from copier.single import BOT_PORT, READER_PORT, is_running
 
 from .settings import Settings
+from .symbols import match_screen
 from .ui import ask, choose, clear, pause, title
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -150,6 +151,7 @@ def tools_menu():
         print("  UTILITAS\n")
         pick = choose(["Pilih channel & topik sumber sinyal",
                        "Pengaturan SOP (risiko, TP, BE, trailing, pengaman, simbol)",
+                       "Cocokkan nama pair dengan broker (setelah ganti broker/akun)",
                        "Coba baca gambar sinyal (tanpa Telegram)",
                        "Cek kesiapan (MT5, Telegram, Claude)",
                        "Riwayat setup",
@@ -157,8 +159,8 @@ def tools_menu():
                        "Tes logika program"], back="Kembali")
         if pick is None:
             return
-        [pick_source, settings.run, try_image, lambda: readiness(cfg), lambda: history(cfg),
-         find_ids, run_tests][pick]()
+        [pick_source, settings.run, lambda: match_screen(settings), try_image,
+         lambda: readiness(cfg), lambda: history(cfg), find_ids, run_tests][pick]()
 
 
 def main():

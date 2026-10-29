@@ -24,14 +24,16 @@ Klik dua kali **`MENU.bat`**. Di atas menu selalu tampil: bot/pembaca sedang jal
 2. Utilitas
    1. Pilih channel & topik sumber sinyal
    2. Pengaturan SOP (risiko, pembagian TP, BE, trailing, entry, gerbang, pengaman, pembaca, simbol)
-   3. Coba baca gambar sinyal (tanpa Telegram)
-   4. Cek kesiapan (MT5, Telegram, Claude)
-   5. Riwayat setup
-   6. Cari ID Telegram (kotak masuk & ID kamu)
-   7. Tes logika program
+   3. Cocokkan nama pair dengan broker (setelah ganti broker/akun)
+   4. Coba baca gambar sinyal (tanpa Telegram)
+   5. Cek kesiapan (MT5, Telegram, Claude)
+   6. Riwayat setup
+   7. Cari ID Telegram (kotak masuk & ID kamu)
+   8. Tes logika program
 ```
 
 - Bot dan pembaca masing-masing jalan di **jendela sendiri**; tutup jendelanya untuk mematikan.
+- **Ganti broker atau akun** (misal ke akun cent): login akun baru di MT5, lalu *Cocokkan nama pair dengan broker*. Menu membaca daftar simbol MT5, mengusulkan nama yang cocok (`XAUUSD` → `XAUUSDc`, atau `GOLD` di broker lain), menanyakan kalau ada beberapa kemungkinan (misal `XAUUSDm` vs `XAUUSD247m`), lalu menyimpan setelah kamu setujui. Saat trading, bot tidak pernah menebak nama; ia hanya memakai tabel yang sudah disimpan, dan memberi tahu di Telegram kalau ada nama yang tidak ada di MT5.
 - Bot dan pembaca **tidak bisa jalan dobel**. Kalau dinyalakan dua kali, yang kedua langsung berhenti, supaya satu sinyal tidak dieksekusi dua kali.
 - **Pengaturan SOP** mengubah `config.yaml` langsung: nilai dicek dulu (misal risiko harus angka 0.01–20), komentar di file tetap utuh, dan config yang bikin bot gagal jalan ditolak. Perubahan berlaku setelah bot dinyalakan ulang. Mematikan "hanya demo" minta konfirmasi ketik `REAL`.
 

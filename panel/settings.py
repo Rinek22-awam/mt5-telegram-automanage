@@ -200,10 +200,14 @@ class Settings:
             print("  Nama di setup -> nama di MT5 (cek di Market Watch; akun cent pakai akhiran c)\n")
             mapping = self.cfg()["simbol"]
             keys = list(mapping)
-            pick = choose([f"{k:<10} -> {v}" for k, v in mapping.items()] + ["+ Tambah simbol"],
-                          back="Kembali")
+            pick = choose([f"{k:<10} -> {v}" for k, v in mapping.items()] +
+                          ["+ Tambah simbol", "Cocokkan otomatis dengan broker di MT5"], back="Kembali")
             if pick is None:
                 return
+            if pick == len(keys) + 1:
+                from .symbols import match_screen
+                match_screen(self)
+                continue
             if pick == len(keys):
                 k = ask("  Nama di setup (misal XAUUSD): ").upper()
                 v = ask("  Nama di MT5 (misal XAUUSDc): ")

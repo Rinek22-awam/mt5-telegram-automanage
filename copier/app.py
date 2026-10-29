@@ -58,7 +58,9 @@ class App:
                  f"saldo {acc.balance:.2f} {acc.currency}",
                  f"Setup aktif di jurnal: {len(self.journal.by_status(*ACTIVE))}"]
         if missing:
-            lines.append("⚠️ Simbol tidak ada di MT5: " + ", ".join(sorted(missing)))
+            lines.append("⚠️ Simbol tidak ada di MT5: " + ", ".join(sorted(missing)) +
+                         ". Setup untuk pair itu akan ditolak. Perbaiki lewat MENU > Utilitas > "
+                         "Cocokkan nama pair dengan broker.")
         if orphan:
             lines.append(f"⚠️ {len(orphan)} order/posisi ber-magic bot tidak ada di jurnal "
                          f"(tidak dijaga): {sorted(orphan)}")

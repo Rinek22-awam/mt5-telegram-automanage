@@ -93,7 +93,7 @@ Harus `"loggedIn": true`. Aplikasi Claude desktop dan CLI punya login masing-mas
 
 1. Login akun Exness di MT5 desktop. Akun harus tipe **hedging** (bot menolak akun netting).
 2. Klik tombol **Algo Trading** sampai hijau.
-3. Cek nama simbol di Market Watch: akun standar/demo pakai akhiran `m` (`XAUUSDm`), akun **cent** pakai `c` (`XAUUSDc`, saldo dalam USC). Sesuaikan lewat MENU → Utilitas → Pengaturan SOP → *Nama simbol di MT5*.
+3. Nama simbol beda tiap broker/akun (Exness demo `XAUUSDm`, cent `XAUUSDc`, broker lain bisa `GOLD`). Jalankan MENU → Utilitas → **Cocokkan nama pair dengan broker**: menu mengusulkan, kamu setujui, tersimpan. Ulangi setiap ganti broker/akun.
 4. Akun **real/cent**: Pengaturan SOP → Pengaman → *Hanya boleh akun demo* = tidak (minta ketik `REAL`).
 
 ## 7. Pertama kali menjalankan
@@ -129,5 +129,5 @@ Dokumen rencana, status terakhir, dan keputusan proyek ada di folder `docs/` rep
 | "Batas loss harian tercapai" terus saat uji | Pengaman 3% sudah kena | Masa uji: Pengaturan SOP → Pengaman → naikkan sementara (misal 20), kembalikan ke 3 sebelum live |
 | Pembaca: "Claude gagal membaca: OAuth ..." | CLI `claude` belum login / sesi habis | `claude auth login` |
 | "Bot sudah jalan di jendela lain" | Bot sudah menyala | Pakai jendela yang ada, atau tutup dulu |
-| Setup ditolak "Simbol ... tidak ada di MT5" | Nama simbol beda (akhiran `m`/`c`) | Pengaturan SOP → Nama simbol di MT5 |
+| Setup ditolak "Simbol ... tidak ada di MT5" | Nama simbol beda (akhiran `m`/`c`, ganti broker) | Utilitas → Cocokkan nama pair dengan broker |
 | Gambar contoh lama ditolak "Entry terlalu jauh" / "TP1 sudah terlewat" | Harga di gambar sudah basi | Normal; gerbang bekerja |
