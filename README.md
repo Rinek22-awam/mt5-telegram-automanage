@@ -11,6 +11,8 @@ Dikembangkan dari [MT5-Automation-Labs/mt5-telegram-signal-copier](https://githu
                        └──────────────► Jurnal ◄──────────── Penjaga posisi (BE, trailing)
 ```
 
+> **Pasang di PC baru:** ikuti [INSTALL.md](INSTALL.md).
+
 ## MENU.bat: satu pintu untuk semuanya
 
 Klik dua kali **`MENU.bat`**. Di atas menu selalu tampil: bot/pembaca sedang jalan atau mati, sumber sinyal, dan risiko.
